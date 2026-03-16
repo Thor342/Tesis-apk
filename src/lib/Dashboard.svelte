@@ -21,7 +21,7 @@
 		{
 			id: 'gonogo',
 			titulo: 'Go / No Go',
-			subtitulo: 'Control inhibitorio',
+			subtitulo: 'Control --inhibitorio',
 			icon: iconTarget,
 			gradiente: 'linear-gradient(135deg, #10b981, #0d9488)',
 			glow: 'rgba(16,185,129,0.45)'
