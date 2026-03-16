@@ -582,18 +582,22 @@
 		</div>
 
 	{:else if gameState === 'practice-complete'}
-		<div class="start-card">
-			<h2>¡Práctica completada!</h2>
-			<p>Realizaste los {PRACTICE_COUNT} ensayos de práctica. Ahora comenzará el test real con <strong>{TOTAL_TRIALS} ensayos</strong>. Los datos serán registrados.</p>
+		<div class="interlude-wrap">
+			<div class="start-card">
+				<h2>¡Práctica completada!</h2>
+				<p>Ahora comenzará el test real. Los datos serán registrados.</p>
+			</div>
+			<button class="start-button" onclick={startRealGame}>Comenzar Test Real</button>
 		</div>
-		<button class="start-button" onclick={startRealGame}>Comenzar Test Real</button>
 
 	{:else if gameState === 'paused'}
-		<div class="start-card">
-			<h2>Prueba pausada</h2>
-			<p>Saliste de la pestaña durante un ensayo. El ensayo actual se reiniciará al continuar para no contaminar los tiempos de reacción.</p>
+		<div class="interlude-wrap">
+			<div class="start-card">
+				<h2>Prueba pausada</h2>
+				<p>Saliste de la pestaña durante un ensayo. El ensayo actual se reiniciará al continuar para no contaminar los tiempos de reacción.</p>
+			</div>
+			<button class="start-button" onclick={scheduleNextTrial}>Continuar</button>
 		</div>
-		<button class="start-button" onclick={scheduleNextTrial}>Continuar</button>
 
 	{:else if gameState === 'results'}
 		<div id="results-section">
@@ -838,6 +842,12 @@
 @keyframes bounce-x {
 	0%, 100% { transform: translateX(0); }
 	50%       { transform: translateX(6px); }
+}
+
+/* ── Wrapper para pantallas de transición (práctica completa / pausa) ───────── */
+.interlude-wrap {
+	display: flex; flex-direction: column; align-items: center; gap: 24px;
+	width: 100%; max-width: 520px;
 }
 
 /* ── .start-card sigue usándose en pausa y práctica completa ─────────────── */
