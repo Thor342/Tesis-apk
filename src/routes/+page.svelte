@@ -25,7 +25,7 @@
 	const PRACTICE_COUNT = 10;
 
 	// ─── Mutable state ────────────────────────────────────────────────────────
-	let gameState = $state<
+let gameState = $state<
 		'start' | 'waiting' | 'stimulus' | 'feedback' |
 		'practice-complete' | 'paused' | 'results'
 	>('start');
@@ -468,22 +468,12 @@
 
 	{:else if gameState === 'waiting'}
 
-		<div class="trial-progress">
-			{isPracticePhase
-				? `Práctica · ${trialIndex + 1} / ${PRACTICE_COUNT}`
-				: `Ensayo · ${trialIndex + 1} / ${TOTAL_TRIALS}`}
-		</div>
 		<div class="game-area">
 			<div class="fixation">+</div>
 		</div>
 
 	{:else if gameState === 'stimulus'}
 
-		<div class="trial-progress">
-			{isPracticePhase
-				? `Práctica · ${trialIndex + 1} / ${PRACTICE_COUNT}`
-				: `Ensayo · ${trialIndex + 1} / ${TOTAL_TRIALS}`}
-		</div>
 		<div class="game-area">
 			<div
 				class="stimulus"
@@ -502,11 +492,6 @@
 
 	{:else if gameState === 'feedback'}
 
-		<div class="trial-progress">
-			{isPracticePhase
-				? `Práctica · ${trialIndex + 1} / ${PRACTICE_COUNT}`
-				: `Ensayo · ${trialIndex + 1} / ${TOTAL_TRIALS}`}
-		</div>
 		<div class="game-area">
 			{#if currentTrial}
 				<div class="feedback {currentTrial.correct ? 'feedback--correct' : 'feedback--incorrect'}">
