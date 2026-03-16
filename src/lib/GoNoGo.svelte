@@ -204,11 +204,16 @@
 			if (elapsed >= isiDuration) {
 				currentISI = elapsed;
 				gameState  = 'stimulus';
+				// Doble RAF: el primero espera el DOM update (tick),
+				// el segundo espera el paint real del estímulo.
+				// startTime se registra cuando el círculo ya es visible.
 				tick().then(() => {
-					rafHandle = requestAnimationFrame(() => {
-						startTime = performance.now();
-						const rtLimit = 1000 + Math.random() * 500;
-						stimulusTimeout = setTimeout(() => endTrial(false, false, 0), rtLimit);
+					requestAnimationFrame(() => {
+						requestAnimationFrame(() => {
+							startTime = performance.now();
+							const rtLimit = 1000 + Math.random() * 500;
+							stimulusTimeout = setTimeout(() => endTrial(false, false, 0), rtLimit);
+						});
 					});
 				});
 			} else {
@@ -917,7 +922,6 @@
 }
 .card h3, .card h4 { margin: 0 0 8px; font-weight: 600; }
 .card .big  { font-size: 2.4rem; margin: 0; }
-.card .sub  { margin: 4px 0 0; color: rgba(0,0,0,0.6); }
 .cdesc { font-size: 0.75rem; margin: 6px 0 0; color: rgba(0,0,0,0.55); line-height: 1.4; font-style: italic; }
 
 .card--precision   { background: linear-gradient(135deg, #DBEAFE, #BFDBFE); }

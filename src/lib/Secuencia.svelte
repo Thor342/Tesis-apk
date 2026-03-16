@@ -1,6 +1,7 @@
 <script lang="ts">
     import * as XLSX from "xlsx";
     import { supabase } from './supabaseClient';
+    import { tick } from 'svelte';
 
     const SvgChulito = `<svg viewBox="0 0 100 100" class="icon-chulo"><path d="M20 50 L45 75 L80 25" fill="none" stroke="#4ade80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const SvgEquis   = `<svg viewBox="0 0 100 100" class="icon-equis"><path d="M25 25 L75 75 M75 25 L25 75" fill="none" stroke="#f87171" stroke-width="12" stroke-linecap="round"/></svg>`;
@@ -21,6 +22,10 @@
 
     const NODES = Array.from({ length: 12 }, (_, i) => ({ id: i }));
 
+    // Niveles 1 y 2 son práctica (excluidos de métricas).
+    // El participante necesita familiarizarse con la interfaz antes de medir.
+    const PRACTICE_LEVELS = 2;
+
     let phase        = $state<'inicio' | 'memo' | 'test' | 'reporte'>('inicio');
     let sessionId    = $state(0);
     let feedback     = $state<'none' | 'success' | 'error'>('none');
@@ -29,20 +34,27 @@
     let activeId     = $state<number | null>(null);
     let level        = $state(1);
     let totalErrors  = $state(0);
+    let isPractice   = $derived(level <= PRACTICE_LEVELS);
 
-    // Métricas científicas
-    let latencies     = $state<number[]>([]);
+    // ── Métricas científicas ──────────────────────────────────────────────────
+    // frl = First Response Latency: tiempo desde que la pantalla test se pinta
+    //       hasta el PRIMER clic de cada nivel. Mide inicio de recuperación.
+    // iri = Inter-Response Interval: tiempo entre clics consecutivos dentro
+    //       de una misma secuencia. Mide velocidad de ejecución.
+    let frlList       = $state<number[]>([]);   // una entrada por nivel jugado
+    let iriList       = $state<number[]>([]);   // una entrada por cada clic 2..N
     let lastClickTime = $state(0);
-    type ResponseEntry = { level: number; latency: number };
-    let responseLog   = $state<ResponseEntry[]>([]);
+    let isFirstClick  = $state(true);
 
-    // Estadísticas derivadas
-    const avgLat = $derived(
-        latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : null
-    );
-    const sdLat  = $derived(calculateSD(latencies));
-    const minLat = $derived(latencies.length > 0 ? Math.min(...latencies) : null);
-    const maxLat = $derived(latencies.length > 0 ? Math.max(...latencies) : null);
+    type ResponseEntry = { level: number; latency: number; tipo: 'frl' | 'iri' };
+    let responseLog = $state<ResponseEntry[]>([]);
+
+    // Estadísticas derivadas — FRL
+    const avgFRL = $derived(frlList.length > 0 ? frlList.reduce((a,b)=>a+b,0)/frlList.length : null);
+    const sdFRL  = $derived(calculateSD(frlList));
+    // Estadísticas derivadas — IRI
+    const avgIRI = $derived(iriList.length > 0 ? iriList.reduce((a,b)=>a+b,0)/iriList.length : null);
+    const sdIRI  = $derived(calculateSD(iriList));
 
     function calculateSD(values: number[]): number {
         if (values.length < 2) return 0;
@@ -56,11 +68,35 @@
         return Number.isInteger(value) ? String(value) : value.toFixed(1);
     }
 
+    // Precarga de audios para eliminar latencia en reproducción
+    const sounds: Record<string, HTMLAudioElement> = {};
+    if (typeof window !== 'undefined') {
+        for (const name of ['pop', 'levelup', 'error'] as const) {
+            const a = new Audio(`/Soundsmemoria/${name}.mp3`);
+            a.volume = 0.4;
+            a.load();
+            sounds[name] = a;
+        }
+    }
+
     function playSound(file: 'pop' | 'levelup' | 'error') {
-        const audio = new Audio(`/Soundsmemoria/${file}.mp3`);
-        audio.volume = 0.4;
+        const audio = sounds[file];
+        if (!audio) return;
+        audio.currentTime = 0;
         audio.play().catch(() => {});
     }
+
+    // Pausa si la pestaña pierde visibilidad durante un ensayo (igual que GoNoGo)
+    $effect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden' && (phase === 'memo' || phase === 'test')) {
+                sessionId++;
+                phase = 'inicio';
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    });
 
     async function iniciarNivel() {
         sessionId++;
@@ -69,26 +105,45 @@
         activeId     = null;
         feedback     = 'none';
 
+        // Generación con crypto RNG (mismo estándar que GoNoGo)
+        const buf = new Uint32Array(level * 4);
+        crypto.getRandomValues(buf);
         const nuevaSecuencia: number[] = [];
+        let bi = 0;
         for (let i = 0; i < level; i++) {
-            let next;
-            do { next = Math.floor(Math.random() * 12); }
+            let next: number;
+            do { next = buf[bi++] % 12; if (bi >= buf.length) { crypto.getRandomValues(buf); bi = 0; } }
             while (i > 0 && next === nuevaSecuencia[i - 1]);
             nuevaSecuencia.push(next);
         }
         sequence = nuevaSecuencia;
 
+        // Fase memo con RAF para alinear cada cambio de estímulo al frame
         phase = 'memo';
         for (const id of sequence) {
-            await new Promise(r => setTimeout(r, 600));
+            // Pausa antes de encender el nodo (alineada al frame)
+            await new Promise<void>(r => {
+                setTimeout(() => requestAnimationFrame(() => r()), 600);
+            });
             if (sessionId !== mySession) return;
             activeId = id;
-            await new Promise(r => setTimeout(r, 800));
+            // Pausa mientras el nodo está encendido (alineada al frame)
+            await new Promise<void>(r => {
+                setTimeout(() => requestAnimationFrame(() => r()), 800);
+            });
             if (sessionId !== mySession) return;
             activeId = null;
         }
-        phase         = 'test';
-        lastClickTime = performance.now();
+        phase        = 'test';
+        isFirstClick = true;
+        // Esperar a que el DOM renderice la pantalla de test antes de
+        // iniciar el cronómetro — garantiza que el estímulo es visible
+        await tick();
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (sessionId === mySession) lastClickTime = performance.now();
+            });
+        });
     }
 
     async function manejarClick(id: number) {
@@ -96,9 +151,19 @@
 
         const ahora   = performance.now();
         const latency = ahora - lastClickTime;
-        latencies.push(latency);
-        responseLog.push({ level, latency });
         lastClickTime = ahora;
+
+        // Solo registrar métricas en niveles reales (fuera de práctica)
+        if (!isPractice) {
+            if (isFirstClick) {
+                frlList.push(latency);
+                responseLog.push({ level, latency, tipo: 'frl' });
+            } else {
+                iriList.push(latency);
+                responseLog.push({ level, latency, tipo: 'iri' });
+            }
+        }
+        isFirstClick = false;
 
         if (id === sequence[userSequence.length]) {
             activeId = id;
@@ -129,12 +194,12 @@
         resultadoGuardado   = false;
 
         const { error } = await supabase.from('secuencia').insert({
-            span_maximo:         level - 1,
-            latencia_promedio:   avgLat,
-            desviacion_estandar: sdLat,
-            latencia_minima:     minLat,
-            latencia_maxima:     maxLat,
-            total_respuestas:    latencies.length,
+            span_maximo:                        level - 1,
+            frl_promedio:                       avgFRL,
+            frl_sd:                             sdFRL,
+            iri_promedio:                       avgIRI,
+            iri_sd:                             sdIRI,
+            total_respuestas:                   frlList.length + iriList.length,
         });
 
         if (error) {
@@ -195,13 +260,15 @@
         doc.setFontSize(11);
 
         const resumen = [
-            `Generado el:                  ${new Date().toLocaleString()}`,
-            `Span Máximo (nivel alcanzado): ${level - 1}`,
-            `Respuestas Registradas:        ${latencies.length}`,
-            `Latencia Promedio:             ${fmtN(avgLat)} ms`,
-            `Desviación Estándar (muestral):${fmtN(sdLat)} ms`,
-            `Latencia Mínima:               ${fmtN(minLat)} ms`,
-            `Latencia Máxima:               ${fmtN(maxLat)} ms`,
+            `Generado el:                        ${new Date().toLocaleString()}`,
+            `Span Máximo (nivel alcanzado):       ${level - 1}`,
+            `Total respuestas:                    ${frlList.length + iriList.length}`,
+            `--- Latencia 1ª Respuesta (FRL) ---`,
+            `FRL Promedio:                        ${fmtN(avgFRL)} ms`,
+            `FRL Desviación Estándar:             ${fmtN(sdFRL)} ms`,
+            `--- Intervalo Inter-Respuesta (IRI) ---`,
+            `IRI Promedio:                        ${fmtN(avgIRI)} ms`,
+            `IRI Desviación Estándar:             ${fmtN(sdIRI)} ms`,
         ];
         resumen.forEach((line, i) => doc.text(line, 20, 68 + i * 22));
 
@@ -212,18 +279,18 @@
     function descargarExcel() {
         const summaryData = [
             ['Métrica', 'Valor'],
-            ['Fecha de Generación',           new Date().toLocaleString()],
-            ['Span Máximo (nivel alcanzado)', level - 1],
-            ['Respuestas Registradas',        latencies.length],
-            ['Latencia Promedio (ms)',         avgLat !== null ? avgLat.toFixed(2) : 'N/A'],
-            ['Desviación Estándar (ms)',       sdLat.toFixed(2)],
-            ['Latencia Mínima (ms)',           minLat !== null ? minLat.toFixed(2) : 'N/A'],
-            ['Latencia Máxima (ms)',           maxLat !== null ? maxLat.toFixed(2) : 'N/A'],
+            ['Fecha de Generación',                    new Date().toLocaleString()],
+            ['Span Máximo (nivel alcanzado)',          level - 1],
+            ['Total respuestas',                       frlList.length + iriList.length],
+            ['FRL Promedio (ms)',                      avgFRL !== null ? avgFRL.toFixed(2) : 'N/A'],
+            ['FRL Desviación Estándar (ms)',           sdFRL.toFixed(2)],
+            ['IRI Promedio (ms)',                      avgIRI !== null ? avgIRI.toFixed(2) : 'N/A'],
+            ['IRI Desviación Estándar (ms)',           sdIRI.toFixed(2)],
         ];
 
-        const detailData: (string | number)[][] = [['Respuesta #', 'Nivel', 'Latencia (ms)']];
+        const detailData: (string | number)[][] = [['Respuesta #', 'Nivel', 'Tipo', 'Latencia (ms)']];
         responseLog.forEach((r, i) => {
-            detailData.push([i + 1, r.level, parseFloat(r.latency.toFixed(2))]);
+            detailData.push([i + 1, r.level, r.tipo === 'frl' ? 'Primera Respuesta' : 'Inter-Respuesta', parseFloat(r.latency.toFixed(2))]);
         });
 
         const wb = XLSX.utils.book_new();
@@ -250,7 +317,10 @@
         <div class="game-container animate-in">
             <div class="top-nav">
                 <button class="btn-outline-pill small" onclick={() => { sessionId++; phase = 'inicio'; }}>Salir</button>
-                <div class="level-badge">Nivel {level}</div>
+                <div class="level-badge">
+                    Nivel {level}
+                    {#if isPractice}<span class="practice-tag">Práctica</span>{/if}
+                </div>
             </div>
 
             <h2 class="status {phase}">{phase === 'memo' ? 'Memorizar' : '¡VAMOS!'}</h2>
@@ -260,6 +330,7 @@
                     {#each NODES as node (node.id)}
                         <button
                             type="button"
+                            aria-label="Nodo {node.id + 1}"
                             class="node"
                             style="background-color: {activeId === node.id ? NODE_COLORS[node.id] : '#f1f5f9'}; border: 2px solid {activeId === node.id ? NODE_COLORS[node.id] : '#e2e8f0'};"
                             onclick={() => manejarClick(node.id)}
@@ -301,25 +372,25 @@
                         <p class="big">{level - 1}</p>
                         <p class="rdesc">Amplitud máxima de memoria visoespacial</p>
                     </div>
-                    <div class="r-card r-avg">
-                        <h3>Latencia Promedio</h3>
-                        <p class="big">{fmtN(avgLat)} ms</p>
-                        <p class="rdesc">Tiempo medio entre estímulo y respuesta</p>
+                    <div class="r-card r-frl">
+                        <h3>Latencia 1ª Respuesta</h3>
+                        <p class="big">{fmtN(avgFRL)} ms</p>
+                        <p class="rdesc">Tiempo desde estímulo visible hasta primer clic</p>
                     </div>
-                    <div class="r-card r-sd">
-                        <h3>Desviación Estándar</h3>
-                        <p class="big">{fmtN(sdLat)} ms</p>
-                        <p class="rdesc">Variabilidad en tiempos de respuesta</p>
+                    <div class="r-card r-frl-sd">
+                        <h3>SD Latencia 1ª Respuesta</h3>
+                        <p class="big">{fmtN(sdFRL)} ms</p>
+                        <p class="rdesc">Consistencia al iniciar la reproducción</p>
                     </div>
-                    <div class="r-card r-min">
-                        <h3>Latencia Mínima</h3>
-                        <p class="big">{fmtN(minLat)} ms</p>
-                        <p class="rdesc">Respuesta más rápida registrada</p>
+                    <div class="r-card r-iri">
+                        <h3>IRI Promedio</h3>
+                        <p class="big">{fmtN(avgIRI)} ms</p>
+                        <p class="rdesc">Intervalo medio entre respuestas consecutivas</p>
                     </div>
-                    <div class="r-card r-max">
-                        <h3>Latencia Máxima</h3>
-                        <p class="big">{fmtN(maxLat)} ms</p>
-                        <p class="rdesc">Respuesta más lenta registrada</p>
+                    <div class="r-card r-iri-sd">
+                        <h3>SD IRI</h3>
+                        <p class="big">{fmtN(sdIRI)} ms</p>
+                        <p class="rdesc">Variabilidad en la ejecución de la secuencia</p>
                     </div>
                 </div>
             </div>
@@ -330,7 +401,7 @@
             </div>
 
             <div class="actions-stack report-footer">
-                <button class="btn-primary" onclick={() => { level = 1; latencies = []; responseLog = []; totalErrors = 0; iniciarNivel(); }}>Reintentar</button>
+                <button class="btn-primary" onclick={() => { level = 1; frlList = []; iriList = []; responseLog = []; totalErrors = 0; iniciarNivel(); }}>Reintentar</button>
                 <button class="btn-outline-pill" onclick={() => onVolver ? onVolver() : phase = 'inicio'}>Finalizar</button>
             </div>
         </div>
@@ -390,15 +461,15 @@
     .r-card { padding: 1rem; border-radius: 1rem; }
     .r-card h3 { font-size: 0.85rem; font-weight: 600; margin: 0 0 6px; color: inherit; }
     .r-card .big { font-size: 2rem; font-weight: 800; margin: 0; }
-    .r-card .sub  { font-size: 0.78rem; margin: 4px 0 0; opacity: 0.7; }
+
     .rdesc { font-size: 0.75rem; margin: 6px 0 0; opacity: 0.65; line-height: 1.4; font-style: italic; }
 
     .r-span   { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e3a8a; }
     .r-errors { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #7f1d1d; }
-    .r-avg    { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); color: #4c1d95; }
-    .r-sd     { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #3b0764; }
-    .r-min    { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #14532d; }
-    .r-max    { background: linear-gradient(135deg, #fef9c3, #fef08a); color: #713f12; }
+    .r-frl    { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); color: #4c1d95; }
+    .r-frl-sd { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #3b0764; }
+    .r-iri    { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #14532d; }
+    .r-iri-sd { background: linear-gradient(135deg, #fef9c3, #fef08a); color: #713f12; }
 
     .download-stack { display: flex; gap: 8px; margin: 1.5rem 0 0; }
     .btn-download { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
@@ -407,6 +478,7 @@
     .btn-download:hover { filter: brightness(0.95); }
 
     .report-footer { border-top: 1px solid #f1f5f9; padding-top: 1rem; margin-top: 1rem; }
+    .practice-tag { background: #fef9c3; color: #713f12; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
 
     @keyframes popScale { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .animate-in { animation: fadeIn 0.4s ease-out; }
