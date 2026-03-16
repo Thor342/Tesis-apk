@@ -462,9 +462,9 @@
 	display:flex;
 	flex-direction:column;
 	align-items:center;
-	justify-content:flex-start;
+	justify-content:center;
 	min-height:100vh;
-	padding: 20px 16px 40px;
+	padding: 40px 16px;
 	font-family:Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	background: radial-gradient(circle at top, #f5f7ff, #e2e8f0);
 }
