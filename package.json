@@ -26,6 +26,7 @@
 		"@capacitor/core": "^8.2.0",
 		"@capacitor/filesystem": "^8.1.2",
 		"@capacitor/share": "^8.0.1",
+		"@supabase/supabase-js": "^2.99.1",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"html2canvas": "^1.4.1",
 		"jspdf": "^4.2.0",
