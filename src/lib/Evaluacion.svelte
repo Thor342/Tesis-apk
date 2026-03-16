@@ -3,8 +3,6 @@
 
 	let { onVolver = undefined as (() => void) | undefined } = $props();
 
-	// Fases de la evaluación completa.
-	// Cuando se agreguen Secuencia y Stopper, se añaden aquí como nuevas fases.
 	type Fase = 'gonogo' | 'fin';
 
 	let fase = $state<Fase>('gonogo');
@@ -12,6 +10,7 @@
 
 {#if fase === 'gonogo'}
 	<GoNoGo
+		modoEvaluacion={true}
 		onTerminar={() => { fase = 'fin'; }}
 		onVolver={onVolver}
 	/>

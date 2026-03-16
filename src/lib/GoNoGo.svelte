@@ -11,7 +11,8 @@
 	let {
 		onVolver      = undefined as (() => void) | undefined,
 		onTerminar    = undefined as (() => void) | undefined,
-		evaluacion_id = undefined as number | undefined
+		evaluacion_id = undefined as number | undefined,
+		modoEvaluacion = false as boolean   // true = parte de evaluación completa, no guarda en tabla gonogo
 	} = $props();
 
 	// ─── Estado de guardado ───────────────────────────────────────────────────
@@ -188,7 +189,7 @@
 
 		if (trialIndex >= limit) {
 			gameState = isPracticePhase ? 'practice-complete' : 'results';
-			if (!isPracticePhase) guardarResultados();
+			if (!isPracticePhase && !modoEvaluacion) guardarResultados();
 			return;
 		}
 
@@ -615,43 +616,47 @@
 				<div class="card card--precision">
 					<h3>Precisión</h3>
 					<p class="big">{fmtNumber(accuracy)}%</p>
-					<p class="sub">{totalCorrect} de {TOTAL_TRIALS} correctos</p>
+					<p class="cdesc">{totalCorrect} de {TOTAL_TRIALS} ensayos correctos</p>
 				</div>
 				<div class="card card--avg">
 					<h3>Tiempo Promedio</h3>
 					<p class="big">{fmtNumber(avgGo)} ms</p>
-					<p class="sub">En estímulos GO correctos</p>
+					<p class="cdesc">Velocidad de respuesta en estímulos GO</p>
 				</div>
 				<div class="card card--sd">
 					<h3>Desviación Estándar</h3>
 					<p class="big">{fmtNumber(sdGo)} ms</p>
-					<p class="sub">Consistencia en tiempos GO</p>
+					<p class="cdesc">Variabilidad en tiempos de reacción GO</p>
 				</div>
 				<div class="card card--fast">
 					<h4>Más Rápida</h4>
 					<p class="big">{fmtNumber(minGo)} ms</p>
+					<p class="cdesc">Tiempo de reacción mínimo registrado</p>
 				</div>
 				<div class="card card--slow">
 					<h4>Más Lenta</h4>
 					<p class="big">{fmtNumber(maxGo)} ms</p>
+					<p class="cdesc">Tiempo de reacción máximo registrado</p>
 				</div>
 				<div class="card card--go">
 					<h4>GO correctos</h4>
 					<p class="big">{goCorrect}/{goTrials.length}</p>
+					<p class="cdesc">Respuestas correctas a círculos verdes</p>
 				</div>
 				<div class="card card--nogo">
 					<h4>NO GO correctos</h4>
 					<p class="big">{noGoCorrect}/{noGoTrials.length}</p>
+					<p class="cdesc">Inhibiciones exitosas ante círculos rojos</p>
 				</div>
 				<div class="card card--out">
-					<h4>Clicks fuera del estímulo</h4>
+					<h4>Clicks fuera</h4>
 					<p class="big">{clicksFuera}</p>
-					<p class="sub">Clicks fuera del círculo</p>
+					<p class="cdesc">Clicks fuera del área del estímulo</p>
 				</div>
 				<div class="card card--anticipation">
-					<h4>Errores de Anticipación</h4>
+					<h4>Anticipación</h4>
 					<p class="big">{anticipationErrors}</p>
-					<p class="sub">Clicks en menos de 150 ms</p>
+					<p class="cdesc">Respuestas en menos de 150 ms</p>
 				</div>
 			</div>
 
@@ -661,12 +666,12 @@
 					<div class="card card--omit">
 						<h4>Errores de Omisión</h4>
 						<p class="big">{omissions}</p>
-						<p class="sub">No hacer clic en círculos verdes</p>
+						<p class="cdesc">Sin respuesta ante círculos verdes</p>
 					</div>
 					<div class="card card--comm">
 						<h4>Errores de Comisión</h4>
 						<p class="big">{commissions}</p>
-						<p class="sub">Hacer clic en círculos rojos</p>
+						<p class="cdesc">Respuesta incorrecta ante círculos rojos</p>
 					</div>
 				</div>
 				<h3>Análisis de Fatiga</h3>
@@ -674,12 +679,12 @@
 					<div class="card card--fatigue">
 						<h4>Promedio Bloque 1 (1–50)</h4>
 						<p class="big">{fmtNumber(avgFirst)} ms</p>
-						<p class="sub">Tiempo promedio primeros 50 ensayos</p>
+						<p class="cdesc">Tiempo promedio en la primera mitad</p>
 					</div>
 					<div class="card card--fatigue">
 						<h4>Promedio Bloque 2 (51–100)</h4>
 						<p class="big">{fmtNumber(avgLast)} ms</p>
-						<p class="sub">Tiempo promedio últimos 50 ensayos</p>
+						<p class="cdesc">Tiempo promedio en la segunda mitad</p>
 					</div>
 				</div>
 			</div>
@@ -911,8 +916,9 @@
 	box-shadow: 0 10px 30px rgba(0,0,0,0.08); word-break: break-word; box-sizing: border-box;
 }
 .card h3, .card h4 { margin: 0 0 8px; font-weight: 600; }
-.card .big { font-size: 2.4rem; margin: 0; }
-.card .sub { margin: 4px 0 0; color: rgba(0,0,0,0.6); }
+.card .big  { font-size: 2.4rem; margin: 0; }
+.card .sub  { margin: 4px 0 0; color: rgba(0,0,0,0.6); }
+.cdesc { font-size: 0.75rem; margin: 6px 0 0; color: rgba(0,0,0,0.55); line-height: 1.4; font-style: italic; }
 
 .card--precision   { background: linear-gradient(135deg, #DBEAFE, #BFDBFE); }
 .card--avg         { background: linear-gradient(135deg, #F3E8FF, #E9D5FF); }
