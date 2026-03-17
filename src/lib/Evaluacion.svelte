@@ -342,7 +342,7 @@ Este reporte ha sido generado de forma automatizada con apoyo de inteligencia ar
 			const apiKey = import.meta.env.VITE_GEMINI_KEY ?? '';
 			if (!apiKey) throw new Error('API key de Gemini no configurada.');
 			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
