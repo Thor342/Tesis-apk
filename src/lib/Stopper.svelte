@@ -199,6 +199,7 @@
                 practicaExitosa = resultados.filter(r => r.acierto).length >= Math.round(N_PRACTICA * PRACTICA_UMBRAL);
                 phase = 'resultado_practica';
             } else {
+                enISI = true; // bloquea botones mientras guarda / transiciona
                 if (!modoEvaluacion) phase = 'reporte';
                 guardarEnStroop();
             }
