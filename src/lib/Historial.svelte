@@ -30,13 +30,12 @@
 		errorMsg = null;
 		try {
 			let query = supabase.from(TABLE[tab]).select('*');
-			// Evaluaciones: más recientes primero por fecha_inicio
-			// Otras tablas: by id desc (created_at existe tras el ALTER TABLE)
-			if (tab === 'evaluacion') {
-				query = query.order('id', { ascending: false });
-			} else {
-				query = query.order('id', { ascending: false });
+			// Pruebas individuales: solo registros SIN evaluacion_id (standalone)
+			// Evaluación: usa la tabla evaluaciones directamente
+			if (tab !== 'evaluacion') {
+				query = query.is('evaluacion_id', null);
 			}
+			query = query.order('id', { ascending: false });
 			const { data, error } = await query;
 			if (error) throw error;
 			const rows = data ?? [];
