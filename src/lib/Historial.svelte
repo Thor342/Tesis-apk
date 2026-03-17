@@ -25,6 +25,14 @@
 		secuencia:  'secuencia',
 	};
 
+	// Campo de fecha por tabla (no todas tienen created_at)
+	const DATE_FIELD: Record<Tab, string> = {
+		evaluacion: 'fecha_inicio',
+		gonogo:     'id',
+		stroop:     'id',
+		secuencia:  'id',
+	};
+
 	async function cargar(tab: Tab) {
 		loading  = true;
 		errorMsg = null;
@@ -32,7 +40,7 @@
 			const { data, error } = await supabase
 				.from(TABLE[tab])
 				.select('*')
-				.order('created_at', { ascending: false });
+				.order('id', { ascending: false });
 			if (error) throw error;
 			const rows = data ?? [];
 			if (tab === 'evaluacion')  dataEval      = rows;
@@ -50,9 +58,18 @@
 		cargar(tab as Tab);
 	}
 
-	function fmtFecha(str: string) {
+	function fmtFecha(str: string | null | undefined) {
 		if (!str) return '-';
-		return new Date(str).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+		const d = new Date(str);
+		if (isNaN(d.getTime())) return '-';
+		return d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+	}
+
+	// Obtiene la fecha a mostrar según el tipo de fila
+	function getfecha(tab: Tab, row: any): string {
+		if (tab === 'evaluacion') return fmtFecha(row.fecha_inicio);
+		// gonogo/stroop/secuencia: si tienen created_at úsalo, si no solo mostramos el ID
+		return fmtFecha(row.created_at);
 	}
 
 	function fmtN(v: any) {
@@ -264,7 +281,7 @@
 		doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
 		doc.text('Evaluación Completa — Reporte', m, y); y += 28;
 		doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(100,116,139);
-		doc.text(`Fecha: ${fmtFecha(r.created_at)}   ·   ID evaluación: ${r.id}`, m, y); y += 24;
+		doc.text(`Fecha: ${fmtFecha(r.fecha_inicio)}   ·   ID evaluación: ${r.id}`, m, y); y += 24;
 		doc.setLineWidth(0.5); doc.setDrawColor(226,232,240); doc.line(m, y, pW - m, y); y += 16;
 
 		if (g) {
@@ -286,7 +303,7 @@
 	async function excelEvaluacion(r: any) {
 		const { g, s, t } = await fetchCombinado(r.id);
 		const ws = XLSX.utils.json_to_sheet([{
-			'Fecha': fmtFecha(r.created_at), 'ID Evaluación': r.id,
+			'Fecha': fmtFecha(r.fecha_inicio), 'ID Evaluación': r.id,
 			// GoNoGo
 			'GNG Precisión (%)': g?.precision_total, 'GNG RT Promedio': g?.rt_promedio,
 			'GNG Err. Omisión': g?.errores_omision, 'GNG Err. Comisión': g?.errores_comision,
@@ -378,7 +395,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 			const json  = await resp.json();
 			const texto = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 			if (!texto) throw new Error('Sin respuesta de la IA');
-			await exportarPDFIA(texto, tab, r.id, fmtFecha(r.created_at));
+			await exportarPDFIA(texto, tab, r.id, getfecha(tab, r));
 		} catch (e: any) {
 			alert('Error IA: ' + (e.message ?? 'Error desconocido'));
 		}
@@ -445,7 +462,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 				'Total Respuestas': r.total_respuestas,
 			}));
 		} else {
-			sheetRows = rows.map(r => ({ Fecha: fmtFecha(r.created_at), 'ID Evaluación': r.id }));
+			sheetRows = rows.map(r => ({ Fecha: fmtFecha(r.fecha_inicio), 'ID Evaluación': r.id }));
 		}
 
 		const ws = XLSX.utils.json_to_sheet(sheetRows);
@@ -520,7 +537,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 						{#each activeData() as row (row.id)}
 							<tr>
 								<td class="cell-id">#{row.id}</td>
-								<td class="cell-fecha">{fmtFecha(row.created_at)}</td>
+								<td class="cell-fecha">{getfecha(activeTab, row)}</td>
 								<td class="cell-actions">
 									<button
 										class="btn-action pdf"
