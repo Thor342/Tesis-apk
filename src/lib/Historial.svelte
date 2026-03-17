@@ -25,22 +25,19 @@
 		secuencia:  'secuencia',
 	};
 
-	// Campo de fecha por tabla (no todas tienen created_at)
-	const DATE_FIELD: Record<Tab, string> = {
-		evaluacion: 'fecha_inicio',
-		gonogo:     'id',
-		stroop:     'id',
-		secuencia:  'id',
-	};
-
 	async function cargar(tab: Tab) {
 		loading  = true;
 		errorMsg = null;
 		try {
-			const { data, error } = await supabase
-				.from(TABLE[tab])
-				.select('*')
-				.order('id', { ascending: false });
+			let query = supabase.from(TABLE[tab]).select('*');
+			// Evaluaciones: más recientes primero por fecha_inicio
+			// Otras tablas: by id desc (created_at existe tras el ALTER TABLE)
+			if (tab === 'evaluacion') {
+				query = query.order('id', { ascending: false });
+			} else {
+				query = query.order('id', { ascending: false });
+			}
+			const { data, error } = await query;
 			if (error) throw error;
 			const rows = data ?? [];
 			if (tab === 'evaluacion')  dataEval      = rows;
@@ -68,8 +65,7 @@
 	// Obtiene la fecha a mostrar según el tipo de fila
 	function getfecha(tab: Tab, row: any): string {
 		if (tab === 'evaluacion') return fmtFecha(row.fecha_inicio);
-		// gonogo/stroop/secuencia: si tienen created_at úsalo, si no solo mostramos el ID
-		return fmtFecha(row.created_at);
+		return fmtFecha(row.created_at); // disponible tras ALTER TABLE
 	}
 
 	function fmtN(v: any) {
@@ -530,6 +526,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 						<tr>
 							<th>ID</th>
 							<th>Fecha</th>
+							{#if activeTab === 'evaluacion'}<th>Estado</th>{/if}
 							<th>Acciones</th>
 						</tr>
 					</thead>
@@ -538,6 +535,15 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 							<tr>
 								<td class="cell-id">#{row.id}</td>
 								<td class="cell-fecha">{getfecha(activeTab, row)}</td>
+								{#if activeTab === 'evaluacion'}
+									<td>
+										{#if row.completada}
+											<span class="badge ok">Completada</span>
+										{:else}
+											<span class="badge pend">Incompleta</span>
+										{/if}
+									</td>
+								{/if}
 								<td class="cell-actions">
 									<button
 										class="btn-action pdf"
@@ -766,4 +772,14 @@ td {
 	animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.badge {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+.badge.ok   { background: #dcfce7; color: #16a34a; }
+.badge.pend { background: #fef9c3; color: #854d0e; }
 </style>
