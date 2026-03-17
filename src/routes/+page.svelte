@@ -4,8 +4,9 @@
 	import Secuencia  from '$lib/Secuencia.svelte';
 	import Stopper    from '$lib/Stopper.svelte';
 	import Evaluacion from '$lib/Evaluacion.svelte';
+	import Historial  from '$lib/Historial.svelte';
 
-	type Vista = 'dashboard' | 'gonogo' | 'secuencia' | 'stopper' | 'evaluacion';
+	type Vista = 'dashboard' | 'gonogo' | 'secuencia' | 'stopper' | 'evaluacion' | 'historial';
 
 	let vistaActual = $state<Vista>('dashboard');
 
@@ -15,6 +16,7 @@
 		secuencia:  'Secuencia de Colores',
 		stopper:    'Stroop',
 		evaluacion: 'Evaluación Completa',
+		historial:  'Historial',
 	};
 </script>
 
@@ -43,6 +45,11 @@
 
 {:else if vistaActual === 'evaluacion'}
 	<Evaluacion
+		onVolver={() => (vistaActual = 'dashboard')}
+	/>
+
+{:else if vistaActual === 'historial'}
+	<Historial
 		onVolver={() => (vistaActual = 'dashboard')}
 	/>
 {/if}

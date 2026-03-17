@@ -224,7 +224,7 @@
                 }
             } else {
                 totalErrors++;
-                phase = 'reporte';
+                if (!modoEvaluacion) phase = 'reporte';
                 guardarResultados();
             }
         }

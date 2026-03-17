@@ -384,7 +384,7 @@
 
         if (trialIndex >= limit) {
 
-            gameState = isPracticePhase ? 'practice-complete' : 'results';
+            gameState = isPracticePhase ? 'practice-complete' : (modoEvaluacion ? gameState : 'results');
 
             if (!isPracticePhase) guardarResultados();
 

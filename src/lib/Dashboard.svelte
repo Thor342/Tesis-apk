@@ -56,6 +56,16 @@
 		<p class="subtitulo">Plataforma cognitiva de evaluación neuropsicológica</p>
 	</header>
 
+	<!-- Historial -->
+	<button
+		class="btn-historial"
+		onclick={() => alNavegar('historial')}
+		in:fly={{ y: 20, duration: 350, delay: 200 }}
+	>
+		<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+		Historial
+	</button>
+
 	<!-- Grid principal -->
 	<div class="grid">
 
@@ -110,6 +120,24 @@
 </div>
 
 <style>
+/* ── Historial button ──────────────────────────────────────────────────────── */
+.btn-historial {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	background: #fff;
+	border: 1.5px solid #e2e8f0;
+	border-radius: 10px;
+	padding: 9px 20px;
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: #475569;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s, color 0.15s;
+	align-self: flex-end;
+}
+.btn-historial:hover { background: #f8fafc; border-color: #6366f1; color: #6366f1; }
+
 /* ── Reset & base ──────────────────────────────────────────────────────────── */
 :global(html), :global(body) {
 	margin: 0; padding: 0; box-sizing: border-box; overflow-x: hidden;
