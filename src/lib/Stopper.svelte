@@ -558,7 +558,7 @@
 </div>
 
 <style>
-    .canvas { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; font-family: system-ui, sans-serif; padding: 20px; }
+    .canvas { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f0f4f8; font-family: system-ui, sans-serif; padding: 20px; }
     .glass-card { background: white; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; width: 350px; }
     .title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 10px 0; }
     .desc { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }

@@ -79,22 +79,31 @@
         return Number.isInteger(value) ? String(value) : value.toFixed(1);
     }
 
-    // Precarga de audios para eliminar latencia en reproducción
-    const sounds: Record<string, HTMLAudioElement> = {};
-    if (typeof window !== 'undefined') {
-        for (const name of ['pop', 'levelup', 'error'] as const) {
-            const a = new Audio(`/Soundsmemoria/${name}.mp3`);
-            a.volume = 0.4;
-            a.load();
-            sounds[name] = a;
-        }
+    // Web Audio API — latencia casi cero vs HTMLAudioElement (especialmente en Android)
+    let audioCtx: AudioContext | null = null;
+    const audioBuffers: Record<string, AudioBuffer> = {};
+
+    async function initAudio() {
+        if (typeof window === 'undefined') return;
+        audioCtx = new AudioContext();
+        await Promise.all(
+            (['pop', 'levelup', 'error'] as const).map(async name => {
+                const res = await fetch(`/Soundsmemoria/${name}.mp3`);
+                const arr = await res.arrayBuffer();
+                audioBuffers[name] = await audioCtx!.decodeAudioData(arr);
+            })
+        );
     }
 
+    if (typeof window !== 'undefined') initAudio();
+
     function playSound(file: 'pop' | 'levelup' | 'error') {
-        const audio = sounds[file];
-        if (!audio) return;
-        audio.currentTime = 0;
-        audio.play().catch(() => {});
+        if (!audioCtx || !audioBuffers[file]) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const src = audioCtx.createBufferSource();
+        src.buffer = audioBuffers[file];
+        src.connect(audioCtx.destination);
+        src.start(0);
     }
 
     // Pausa si la pestaña pierde visibilidad durante un ensayo (igual que GoNoGo)
@@ -584,7 +593,7 @@
 </div>
 
 <style>
-    .canvas { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; }
+    .canvas { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f0f4f8; font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; }
 
     /* Inicio */
     .glass-card { background: white; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; width: 350px; }

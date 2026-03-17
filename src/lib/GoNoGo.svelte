@@ -1452,13 +1452,13 @@
 
     font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-    background: radial-gradient(ellipse at 20% 10%, #f0f4ff 0%, #ffffff 40%, #f8faff 100%);
+    background: #f0f4f8;
 
     user-select: none; -webkit-user-select: none;
 
 }
 
-.start-theme { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%); }
+.start-theme { background: #f0f4f8; }
 
 
 
@@ -1479,7 +1479,7 @@
 
     display: flex; align-items: center; justify-content: center; gap: 6px;
 
-    color: rgba(255,255,255,0.6); font-size: 0.9rem; margin: 0;
+    color: #64748b; font-size: 0.9rem; margin: 0;
 
 }
 
@@ -1487,7 +1487,7 @@
 
 .instr-card {
 
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+    background: #f8fafc; border: 1px solid #e2e8f0;
 
     border-radius: 20px; padding: 24px 16px; text-align: center;
 
@@ -1507,21 +1507,21 @@
 
 .instr-accion { font-size: 1.15rem; font-weight: 800; margin: 0; letter-spacing: 0.01em; }
 
-.go-accion   { color: #86efac; }
+.go-accion   { color: #16a34a; }
 
-.nogo-accion { color: #fca5a5; }
+.nogo-accion { color: #dc2626; }
 
-.instr-desc { font-size: 0.8rem; color: rgba(255,255,255,0.55); margin: 2px 0 0; }
+.instr-desc { font-size: 0.8rem; color: #94a3b8; margin: 2px 0 0; }
 
 .practica-banner {
 
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    background: #f8fafc; border: 1px solid #e2e8f0;
 
     border-radius: 14px; padding: 14px 20px; text-align: center; width: 100%;
 
 }
 
-.practica-banner p { color: rgba(255,255,255,0.75); margin: 0; font-size: 0.9rem; }
+.practica-banner p { color: #475569; margin: 0; font-size: 0.9rem; }
 
 .practica-num { color: #fbbf24; }
 
@@ -1533,15 +1533,15 @@
 
     padding: 14px 24px; border-radius: 999px;
 
-    border: 2px solid rgba(255,255,255,0.2); background: transparent;
+    border: 2px solid #e2e8f0; background: transparent;
 
-    color: rgba(255,255,255,0.8); font-size: 0.95rem; cursor: pointer;
+    color: #475569; font-size: 0.95rem; cursor: pointer;
 
     transition: background 0.2s ease, border-color 0.2s ease;
 
 }
 
-.btn-volver-start:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.35); }
+.btn-volver-start:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
 .arrow-left-icon { display: flex; align-items: center; }
 
