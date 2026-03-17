@@ -20,6 +20,7 @@
 	let generandoExcel   = $state(false);
 	let generandoReporte = $state(false);
 	let errorReporte     = $state<string | null>(null);
+	let textoReporteIA   = $state<string | null>(null); // null = no generado aún
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────
 	function fmtN(v: number | null | undefined) {
@@ -250,6 +251,13 @@
 				.from('evaluaciones')
 				.update({ fecha_fin: new Date().toISOString(), completada: true })
 				.eq('id', evaluacionId);
+			// Verificar si ya existe reporte IA guardado
+			const { data } = await supabase
+				.from('evaluaciones')
+				.select('reporte_ia')
+				.eq('id', evaluacionId)
+				.single();
+			textoReporteIA = data?.reporte_ia ?? null;
 		}
 		fase = 'fin';
 	}
@@ -375,7 +383,14 @@ MEMORIA VISOESPACIAL:
 			const texto: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 			if (!texto) throw new Error('La IA no devolvió contenido.');
 
-			// 4. Generar PDF
+			// 4. Guardar texto en BD (inmutable desde ahora)
+			await supabase
+				.from('evaluaciones')
+				.update({ reporte_ia: texto })
+				.eq('id', evaluacionId);
+			textoReporteIA = texto;
+
+			// 5. Generar PDF
 			await exportarPDFIA(texto);
 
 		} catch (err: unknown) {
@@ -540,13 +555,19 @@ MEMORIA VISOESPACIAL:
 					</button>
 				</div>
 
-				<button class="btn-ia" onclick={generarReporteIA} disabled={generandoReporte}>
-					{#if generandoReporte}
-						<span class="spinner"></span> Generando reporte…
-					{:else}
-						✦ Reporte con IA
-					{/if}
-				</button>
+				{#if textoReporteIA}
+					<button class="btn-ia" onclick={() => exportarPDFIA(textoReporteIA!)}>
+						⬇ Descargar reporte IA
+					</button>
+				{:else}
+					<button class="btn-ia" onclick={generarReporteIA} disabled={generandoReporte}>
+						{#if generandoReporte}
+							<span class="spinner"></span> Generando reporte…
+						{:else}
+							✦ Generar reporte con IA
+						{/if}
+					</button>
+				{/if}
 
 				{#if errorReporte}
 					<p class="error-msg">{errorReporte}</p>

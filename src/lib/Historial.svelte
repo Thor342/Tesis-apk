@@ -410,6 +410,13 @@ Datos:
 	async function reporteIA(tab: Tab, r: any) {
 		loadingRow = { id: r.id, action: 'ia' };
 		try {
+			// Si ya fue generado antes, solo descargar
+			if (r.reporte_ia) {
+				await exportarPDFIA(r.reporte_ia, tab, r.id, getfecha(tab, r));
+				loadingRow = null;
+				return;
+			}
+
 			let prompt = '';
 			if (tab === 'evaluacion') {
 				const { g, s, t } = await fetchCombinado(r.id);
@@ -429,6 +436,11 @@ Datos:
 			}
 			const texto = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 			if (!texto) throw new Error('Sin respuesta de la IA');
+
+			// Guardar en BD y actualizar fila local
+			await supabase.from('evaluaciones').update({ reporte_ia: texto }).eq('id', r.id);
+			dataEval = dataEval.map(row => row.id === r.id ? { ...row, reporte_ia: texto } : row);
+
 			await exportarPDFIA(texto, tab, r.id, getfecha(tab, r));
 		} catch (e: any) {
 			alert('Error IA: ' + (e.message ?? 'Error desconocido'));
@@ -613,6 +625,8 @@ Datos:
 									>
 										{#if loadingRow?.id === row.id && loadingRow?.action === 'ia'}
 											<span class="spinner"></span>
+										{:else if row.reporte_ia}
+											⬇ IA
 										{:else}
 											✦ IA
 										{/if}
