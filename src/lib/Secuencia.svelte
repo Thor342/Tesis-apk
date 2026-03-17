@@ -2,6 +2,9 @@
     import * as XLSX from "xlsx";
     import { supabase } from './supabaseClient';
     import { tick } from 'svelte';
+    import { Capacitor } from '@capacitor/core';
+    import { Filesystem, Directory } from '@capacitor/filesystem';
+    import { Share } from '@capacitor/share';
 
     const SvgChulito = `<svg viewBox="0 0 100 100" class="icon-chulo"><path d="M20 50 L45 75 L80 25" fill="none" stroke="#4ade80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const SvgEquis   = `<svg viewBox="0 0 100 100" class="icon-equis"><path d="M25 25 L75 75 M75 25 L25 75" fill="none" stroke="#f87171" stroke-width="12" stroke-linecap="round"/></svg>`;
@@ -13,7 +16,12 @@
         '#f97316', '#84cc16', '#06b6d4', '#a855f7',
     ];
 
-    let { onVolver, modoEvaluacion = false } = $props<{ onVolver?: () => void; modoEvaluacion?: boolean }>();
+    let {
+        onVolver      = undefined as (() => void) | undefined,
+        onTerminar    = undefined as (() => void) | undefined,
+        evaluacion_id = undefined as number | undefined,
+        modoEvaluacion = false as boolean
+    } = $props();
 
     // ── Estado de guardado ────────────────────────────────────────────────────
     let guardandoResultados = $state(false);
@@ -22,19 +30,22 @@
 
     const NODES = Array.from({ length: 12 }, (_, i) => ({ id: i }));
 
-    // Niveles 1 y 2 son práctica (excluidos de métricas).
-    // El participante necesita familiarizarse con la interfaz antes de medir.
-    const PRACTICE_LEVELS = 2;
+    // Los primeros 5 intentos son práctica (excluidos de métricas).
+    // Secuencia fija de longitud 3 para familiarizar sin frustración.
+    const PRACTICE_TOTAL   = 5;
+    const PRACTICE_SEQ_LEN = 3;
 
-    let phase        = $state<'inicio' | 'memo' | 'test' | 'reporte'>('inicio');
-    let sessionId    = $state(0);
-    let feedback     = $state<'none' | 'success' | 'error'>('none');
-    let sequence     = $state<number[]>([]);
-    let userSequence = $state<number[]>([]);
-    let activeId     = $state<number | null>(null);
-    let level        = $state(1);
-    let totalErrors  = $state(0);
-    let isPractice   = $derived(level <= PRACTICE_LEVELS);
+    let phase         = $state<'inicio' | 'memo' | 'test' | 'reporte' | 'pausado' | 'practica-completada'>('inicio');
+    let sessionId     = $state(0);
+    let feedback      = $state<'none' | 'success' | 'error'>('none');
+    let sequence      = $state<number[]>([]);
+    let userSequence  = $state<number[]>([]);
+    let activeId      = $state<number | null>(null);
+    let level         = $state(1);
+    let totalErrors   = $state(0);
+    let inPractice    = $state(false);
+    let practiceCount = $state(0);
+    let isPractice    = $derived(inPractice);
 
     // ── Métricas científicas ──────────────────────────────────────────────────
     // frl = First Response Latency: tiempo desde que la pantalla test se pinta
@@ -90,8 +101,11 @@
     $effect(() => {
         const handleVisibility = () => {
             if (document.visibilityState === 'hidden' && (phase === 'memo' || phase === 'test')) {
+                // Incrementar sessionId cancela cualquier animación en curso.
+                // Se va a 'pausado' en lugar de 'inicio' para avisar al evaluador
+                // y evitar que los datos recolectados hasta ahora se pierdan silenciosamente.
                 sessionId++;
-                phase = 'inicio';
+                phase = 'pausado';
             }
         };
         document.addEventListener('visibilitychange', handleVisibility);
@@ -105,12 +119,13 @@
         activeId     = null;
         feedback     = 'none';
 
+        const seqLen = inPractice ? PRACTICE_SEQ_LEN : level;
         // Generación con crypto RNG (mismo estándar que GoNoGo)
-        const buf = new Uint32Array(level * 4);
+        const buf = new Uint32Array(seqLen * 4);
         crypto.getRandomValues(buf);
         const nuevaSecuencia: number[] = [];
         let bi = 0;
-        for (let i = 0; i < level; i++) {
+        for (let i = 0; i < seqLen; i++) {
             let next: number;
             do { next = buf[bi++] % 12; if (bi >= buf.length) { crypto.getRandomValues(buf); bi = 0; } }
             while (i > 0 && next === nuevaSecuencia[i - 1]);
@@ -175,17 +190,56 @@
                 feedback = 'success';
                 playSound('levelup');
                 await new Promise(r => setTimeout(r, 1200));
-                level++;
-                iniciarNivel();
+                if (inPractice) {
+                    practiceCount++;
+                    if (practiceCount < PRACTICE_TOTAL) {
+                        iniciarNivel();
+                    } else {
+                        phase = 'practica-completada';
+                    }
+                } else {
+                    level++;
+                    iniciarNivel();
+                }
             }
         } else {
             feedback = 'error';
-            totalErrors++;
             playSound('error');
             await new Promise(r => setTimeout(r, 1500));
-            phase = 'reporte';
-            if (!modoEvaluacion) guardarResultados();
+            if (inPractice) {
+                practiceCount++;
+                if (practiceCount < PRACTICE_TOTAL) {
+                    iniciarNivel();
+                } else {
+                    phase = 'practica-completada';
+                }
+            } else {
+                totalErrors++;
+                phase = 'reporte';
+                guardarResultados();
+            }
         }
+    }
+
+    function iniciarPractica() {
+        inPractice    = true;
+        practiceCount = 0;
+        level         = 1;
+        totalErrors   = 0;
+        frlList       = [];
+        iriList       = [];
+        responseLog   = [];
+        iniciarNivel();
+    }
+
+    function iniciarTestReal() {
+        inPractice  = false;
+        level       = 1;
+        totalErrors = 0;
+        frlList     = [];
+        iriList     = [];
+        responseLog = [];
+        iniciarNivel();
     }
 
     async function guardarResultados() {
@@ -194,7 +248,9 @@
         resultadoGuardado   = false;
 
         const { error } = await supabase.from('secuencia').insert({
+            evaluacion_id:                      evaluacion_id ?? null,
             span_maximo:                        level - 1,
+            errores_totales:                    totalErrors,
             frl_promedio:                       avgFRL,
             frl_sd:                             sdFRL,
             iri_promedio:                       avgIRI,
@@ -272,11 +328,30 @@
         ];
         resumen.forEach((line, i) => doc.text(line, 20, 68 + i * 22));
 
-        doc.save('Reporte_Memoria_Secuencia.pdf');
+        if (Capacitor.isNativePlatform()) {
+            const base64 = doc.output('datauristring').split(',')[1];
+            try {
+                const result = await Filesystem.writeFile({
+                    path: 'reporte-memoria-secuencia.pdf',
+                    data: base64,
+                    directory: Directory.Cache
+                });
+                await Share.share({
+                    title: 'Reporte Memoria Visoespacial',
+                    files: [result.uri],
+                    dialogTitle: 'Compartir reporte'
+                });
+            } catch (err) {
+                console.error('Error al compartir PDF:', err);
+                alert('No se pudo compartir el PDF. Revisa los permisos de la app.');
+            }
+        } else {
+            doc.save('Reporte_Memoria_Secuencia.pdf');
+        }
     }
 
     // ── Descarga Excel (resumen + detalle por respuesta) ─────────────────────
-    function descargarExcel() {
+    async function descargarExcel() {
         const summaryData = [
             ['Métrica', 'Valor'],
             ['Fecha de Generación',                    new Date().toLocaleString()],
@@ -293,20 +368,85 @@
             detailData.push([i + 1, r.level, r.tipo === 'frl' ? 'Primera Respuesta' : 'Inter-Respuesta', parseFloat(r.latency.toFixed(2))]);
         });
 
-        const wb = XLSX.utils.book_new();
+        const wb     = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Resumen');
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailData),  'Respuestas Detalladas');
-        XLSX.writeFile(wb, 'Data_Memoria_Secuencia.xlsx');
+        const wbout  = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob   = new Blob([wbout], { type: 'application/octet-stream' });
+
+        if (Capacitor.isNativePlatform()) {
+            const base64 = await blobToBase64(blob);
+            try {
+                const result = await Filesystem.writeFile({
+                    path: 'data-memoria-secuencia.xlsx',
+                    data: base64,
+                    directory: Directory.Cache
+                });
+                await Share.share({
+                    title: 'Reporte Memoria Visoespacial Excel',
+                    files: [result.uri],
+                    dialogTitle: 'Compartir reporte Excel'
+                });
+            } catch (err) {
+                console.error('Error al compartir Excel:', err);
+                alert('Error al compartir el Excel.');
+            }
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a   = document.createElement('a');
+            a.href    = url;
+            a.download = 'Data_Memoria_Secuencia.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    function blobToBase64(blob: Blob): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader     = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror   = reject;
+            reader.readAsDataURL(blob);
+        });
     }
 </script>
 
 <div class="canvas">
     {#if phase === 'inicio'}
-        <div class="glass-card animate-in">
-            <h1 class="title">Memorizar</h1>
-            <p class="desc">Tarea de amplitud de memoria visoespacial.</p>
+        <div class="intro-card animate-in">
+            <h1 class="title">Secuencia de Colores</h1>
+            <p class="intro-sub">Memoriza el orden en que se iluminan los nodos y repítelo</p>
+
+            <div class="seq-pasos">
+                <div class="seq-paso">
+                    <div class="paso-icono" style="background:#ede9fe; color:#6366f1">👁</div>
+                    <div class="paso-texto">
+                        <strong>Observa</strong>
+                        <span>Los nodos se iluminan uno a uno</span>
+                    </div>
+                </div>
+                <div class="paso-conector">↓</div>
+                <div class="seq-paso">
+                    <div class="paso-icono" style="background:#dcfce7; color:#16a34a">👆</div>
+                    <div class="paso-texto">
+                        <strong>Repite</strong>
+                        <span>Toca los mismos nodos en el mismo orden</span>
+                    </div>
+                </div>
+                <div class="paso-conector">↓</div>
+                <div class="seq-paso">
+                    <div class="paso-icono" style="background:#fef9c3; color:#ca8a04">📈</div>
+                    <div class="paso-texto">
+                        <strong>Avanza</strong>
+                        <span>Cada nivel añade un nodo más a la secuencia</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="actions-stack">
-                <button class="btn-primary" onclick={iniciarNivel}>Comenzar Prueba</button>
+                <button class="btn-primary" onclick={iniciarPractica}>Comenzar Prueba</button>
                 {#if onVolver}
                     <button class="btn-outline-pill" onclick={onVolver}>Volver</button>
                 {/if}
@@ -318,8 +458,11 @@
             <div class="top-nav">
                 <button class="btn-outline-pill small" onclick={() => { sessionId++; phase = 'inicio'; }}>Salir</button>
                 <div class="level-badge">
-                    Nivel {level}
-                    {#if isPractice}<span class="practice-tag">Práctica</span>{/if}
+                    {#if isPractice}
+                        Práctica {practiceCount + 1}/{PRACTICE_TOTAL}
+                    {:else}
+                        Nivel {level}
+                    {/if}
                 </div>
             </div>
 
@@ -347,6 +490,16 @@
                         {/if}
                     </div>
                 {/if}
+            </div>
+        </div>
+
+    {:else if phase === 'practica-completada'}
+        <div class="glass-card animate-in">
+            <div class="icon success-icon">✓</div>
+            <h2 class="title">¡Bien!</h2>
+            <p class="desc">Ya conoces cómo funciona la prueba. ¡Ahora a iniciar de verdad!</p>
+            <div class="actions-stack">
+                <button class="btn-primary" onclick={iniciarTestReal}>Iniciar Prueba</button>
             </div>
         </div>
 
@@ -401,8 +554,30 @@
             </div>
 
             <div class="actions-stack report-footer">
-                <button class="btn-primary" onclick={() => { level = 1; frlList = []; iriList = []; responseLog = []; totalErrors = 0; iniciarNivel(); }}>Reintentar</button>
-                <button class="btn-outline-pill" onclick={() => onVolver ? onVolver() : phase = 'inicio'}>Finalizar</button>
+                {#if onTerminar}
+                    <button class="btn-primary" onclick={onTerminar}>Continuar evaluación →</button>
+                {/if}
+                <button class="btn-primary" style="background:#334155" onclick={iniciarPractica}>Reintentar prueba</button>
+                {#if !modoEvaluacion}
+                    <button class="btn-outline-pill" onclick={() => onVolver ? onVolver() : phase = 'inicio'}>Finalizar</button>
+                {/if}
+            </div>
+        </div>
+
+    {:else if phase === 'pausado'}
+        <div class="glass-card animate-in">
+            <div class="icon error-icon" style="color:#f59e0b">⚠</div>
+            <h2 class="title">Prueba interrumpida</h2>
+            <p class="desc">
+                La pantalla perdió el foco durante un ensayo activo.
+                Para garantizar la validez de los tiempos de reacción,
+                la prueba debe reiniciarse desde el principio.
+            </p>
+            <div class="actions-stack">
+                <button class="btn-primary" onclick={() => { phase = 'inicio'; }}>Reiniciar prueba</button>
+                {#if onVolver && !modoEvaluacion}
+                    <button class="btn-outline-pill" onclick={onVolver}>Volver al menú</button>
+                {/if}
             </div>
         </div>
     {/if}
@@ -415,6 +590,8 @@
     .glass-card { background: white; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; width: 350px; }
     .title { font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0 0 0.4rem; }
     .desc  { color: #64748b; margin: 0; }
+    .icon  { font-size: 3rem; font-weight: bold; margin-bottom: 10px; }
+    .success-icon { color: #16a34a; }
 
     .actions-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem; }
 
@@ -483,4 +660,16 @@
     @keyframes popScale { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .animate-in { animation: fadeIn 0.4s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Intro card (Secuencia) ──────────────────────────────────────── */
+    .intro-card { background: white; padding: 2rem 1.75rem; border-radius: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: min(400px, 100%); text-align: center; }
+    .intro-sub { color: #475569; font-size: 1.05rem; margin: 0 0 1.5rem; line-height: 1.5; font-weight: 500; }
+
+    .seq-pasos { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 1.5rem; text-align: left; }
+    .seq-paso { display: flex; align-items: center; gap: 14px; width: 100%; background: #f8fafc; border-radius: 1rem; padding: 14px 16px; }
+    .paso-icono { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+    .paso-texto { display: flex; flex-direction: column; gap: 3px; }
+    .paso-texto strong { font-size: 1.05rem; color: #1e293b; }
+    .paso-texto span   { font-size: 0.88rem; color: #64748b; line-height: 1.4; }
+    .paso-conector { font-size: 1.1rem; color: #cbd5e1; padding: 4px 0; }
 </style>

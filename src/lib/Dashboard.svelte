@@ -36,8 +36,8 @@
 		},
 		{
 			id: 'stopper',
-			titulo: 'Stopper',
-			subtitulo: 'Tiempo de reacción',
+			titulo: 'Stroop',
+			subtitulo: 'Control cognitivo',
 			icon: iconStop,
 			gradiente: 'linear-gradient(135deg, #f43f5e, #ec4899)',
 			glow: 'rgba(244,63,94,0.45)'
@@ -86,7 +86,7 @@
 
 		<!-- Tarjetas derecha -->
 		<div class="tarjetas" in:fly={{ x: 40, duration: 450, delay: 150 }}>
-			{#each tarjetas as t, i}
+			{#each tarjetas as t}
 				<button
 					class="tarjeta"
 					style="--grad: {t.gradiente}; --glow: {t.glow};"
