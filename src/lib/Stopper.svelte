@@ -560,19 +560,19 @@
 
 <style>
     .canvas { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f0f4f8; font-family: system-ui, sans-serif; padding: 20px; }
-    .glass-card { background: white; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; width: 350px; }
+    .glass-card { background: white; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; width: min(350px, 100%); }
     .title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 10px 0; }
     .desc { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }
     .icon { font-size: 3rem; font-weight: bold; margin-bottom: 10px; }
     .success-icon { color: #16a34a; }
     .error-icon { color: #e11d48; }
 
-    .game-container { width: 100%; max-width: 500px; text-align: center; }
+    .game-container { width: 100%; max-width: 500px; text-align: center; padding: 0 20px; box-sizing: border-box; }
     .top-nav { margin-bottom: 1rem; }
     .level-badge { display: inline-block; background: #e2e8f0; padding: 5px 15px; border-radius: 20px; font-weight: bold; color: #475569; font-size: 0.85rem; }
-    .stroop-word { font-size: 4.5rem; font-weight: 900; margin: 2rem 0; user-select: none; }
+    .stroop-word { font-size: clamp(2.2rem, 10vw, 4.5rem); font-weight: 900; margin: 2rem 0; user-select: none; word-break: break-word; line-height: 1.1; }
     .fixation-wrap { height: 180px; display: flex; align-items: center; justify-content: center; }
-    .fixation { font-size: 4rem; font-weight: 300; color: #94a3b8; user-select: none; }
+    .fixation { font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 300; color: #94a3b8; user-select: none; }
     .grid-stroop { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .btn-stroop-choice { aspect-ratio: 1.8/1; border-radius: 1.2rem; border: none; cursor: pointer; transition: 0.1s; }
     .btn-stroop-choice:active { transform: scale(0.95); }
@@ -617,7 +617,7 @@
 
     .stroop-demo { background: #f8fafc; border-radius: 1.2rem; padding: 1.2rem 1rem; margin-bottom: 1rem; }
     .demo-ejemplo { margin-bottom: 0.6rem; }
-    .demo-palabra { font-size: 3rem; font-weight: 900; user-select: none; }
+    .demo-palabra { font-size: clamp(2rem, 8vw, 3rem); font-weight: 900; user-select: none; }
     .demo-regla { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 0.6rem; }
     .demo-incorrecto { font-size: 0.95rem; font-weight: 700; color: #dc2626; opacity: 0.7; }
     .demo-correcto   { font-size: 0.95rem; font-weight: 700; color: #16a34a; }
