@@ -341,7 +341,7 @@ Este reporte ha sido generado de forma automatizada con apoyo de inteligencia ar
 			// 3. Llamar a Gemini API
 			const apiKey = 'AIzaSyC2C6td8dZNYGUpWr1_j-UBu0xnSsw_2Rc';
 			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
