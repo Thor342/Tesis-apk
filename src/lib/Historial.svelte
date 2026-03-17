@@ -316,7 +316,7 @@
 	}
 
 	// ─── Gemini IA ────────────────────────────────────────────────────────────
-	const GEMINI_KEY = 'AIzaSyC2C6td8dZNYGUpWr1_j-UBu0xnSsw_2Rc';
+	const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY ?? '';
 
 	function buildPrompt(tab: Tab, r: any, g?: any, s?: any, t?: any): string {
 		if (tab === 'evaluacion') {

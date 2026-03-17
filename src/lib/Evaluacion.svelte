@@ -339,7 +339,8 @@ NOTA ACLARATORIA
 Este reporte ha sido generado de forma automatizada con apoyo de inteligencia artificial como herramienta descriptiva. No constituye diagnóstico clínico ni reemplaza la evaluación por un profesional de neuropsicología.`;
 
 			// 3. Llamar a Gemini API
-			const apiKey = 'AIzaSyC2C6td8dZNYGUpWr1_j-UBu0xnSsw_2Rc';
+			const apiKey = import.meta.env.VITE_GEMINI_KEY ?? '';
+			if (!apiKey) throw new Error('API key de Gemini no configurada.');
 			const resp = await fetch(
 				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
 				{
