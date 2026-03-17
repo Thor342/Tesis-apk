@@ -242,6 +242,7 @@
             errorGuardado = 'No se pudieron guardar los resultados. Intenta de nuevo.';
         } else {
             guardadoExitoso = true;
+            if (modoEvaluacion) onTerminar?.();
         }
         guardando = false;
     }

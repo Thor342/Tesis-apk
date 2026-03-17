@@ -610,6 +610,8 @@
 
             guardadoExitoso = true;
 
+            if (modoEvaluacion) onTerminar?.();
+
         }
 
 
