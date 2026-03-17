@@ -280,69 +280,81 @@
 				v === null || v === undefined ? 'No disponible' : Number.isInteger(v) ? String(v) : Number(v).toFixed(1);
 
 			// 2. Construir prompt
-			const prompt = `Eres un asistente especializado en neuropsicología clínica. Genera un reporte descriptivo profesional en español a partir de los siguientes resultados de una batería neuropsicológica.
+			const prompt = `Actúa como un experto en neuropsicología cognitiva.
 
-INSTRUCCIONES ESTRICTAS:
-- Usa lenguaje técnico-profesional apropiado para reportes neuropsicológicos.
-- Describe e interpreta los resultados de forma objetiva y descriptiva.
-- NO emitas diagnósticos clínicos, no uses términos como "el paciente padece" o "se diagnostica".
-- Menciona rangos normativos de referencia cuando sea relevante (adultos sanos, 18-65 años).
-- El reporte es de apoyo descriptivo, no reemplaza la evaluación clínica presencial.
-- Responde ÚNICAMENTE con el reporte, sin comentarios adicionales fuera del formato.
+Vas a recibir datos de una batería digital compuesta por tres pruebas:
+1. Go/No-Go (control inhibitorio)
+2. Stroop (control cognitivo e interferencia)
+3. Memoria visoespacial secuencial
 
-DATOS DE LA EVALUACIÓN (${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}):
+Tu tarea es generar un REPORTE CLARO, PROFESIONAL Y BIEN REDACTADO.
 
-=== PRUEBA 1: GO/NO-GO — Control Inhibitorio ===
-Precisión total: ${fmt(g.precision_total)}%
-Tiempo de reacción promedio (GO): ${fmt(g.rt_promedio)} ms | DE: ${fmt(g.desviacion_estandar)} ms
-TR mínimo: ${fmt(g.tiempo_minimo)} ms | TR máximo: ${fmt(g.tiempo_maximo)} ms
-Ensayos GO correctos: ${fmt(g.go_correctos)}/80 | NO-GO correctos: ${fmt(g.nogo_correctos)}/20
-Errores de omisión: ${fmt(g.errores_omision)} | Errores de comisión: ${fmt(g.errores_comision)}
-Errores de anticipación (<200 ms): ${fmt(g.errores_anticipacion)}
-TR promedio bloque 1 (ensayos 1-50): ${fmt(g.promedio_bloque1)} ms
-TR promedio bloque 2 (ensayos 51-100): ${fmt(g.promedio_bloque2)} ms
+REGLAS IMPORTANTES:
+- NO hagas diagnósticos clínicos
+- NO afirmes trastornos ni déficits
+- NO uses lenguaje patologizante
+- SOLO describe los datos de forma DESCRIPTIVA
+- Usa lenguaje técnico pero comprensible
+- Responde SOLO con el reporte, sin explicaciones adicionales
+- Sin markdown, sin asteriscos, sin símbolos especiales
 
-=== PRUEBA 2: MEMORIA VISOESPACIAL — Secuencia de Colores ===
-Span máximo alcanzado: ${fmt(s.span_maximo)} elementos
-Errores totales: ${fmt(s.errores_totales)}
-Latencia primera respuesta promedio (FRL): ${fmt(s.frl_promedio)} ms | DE: ${fmt(s.frl_sd)} ms
-Intervalo inter-respuesta promedio (IRI): ${fmt(s.iri_promedio)} ms | DE: ${fmt(s.iri_sd)} ms
-Total respuestas registradas: ${fmt(s.total_respuestas)}
+ESTRUCTURA DEL REPORTE:
 
-=== PRUEBA 3: TEST DE STROOP — Atención Selectiva e Inhibición Cognitiva ===
-Aciertos totales: ${fmt(t.aciertos_totales)}/40
-TR promedio congruente: ${fmt(t.media_congruente_ms)} ms | DE: ${fmt(t.rt_congruente_sd)} ms
-TR promedio incongruente: ${fmt(t.media_incongruente_ms)} ms | DE: ${fmt(t.rt_incongruente_sd)} ms
-Índice de interferencia Stroop: ${fmt(t.indice_interferencia_ms)} ms (clasificación: ${t.estado_interferencia ?? 'No disponible'})
-Aciertos congruentes: ${fmt(t.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmt(t.aciertos_incongruente)}/20
-Errores congruentes: ${fmt(t.errores_congruente)} | Errores incongruentes: ${fmt(t.errores_incongruente)}
-Anticipaciones (<200 ms): ${fmt(t.anticipaciones)}
+1. RESUMEN GENERAL
+Describe de forma breve el desempeño global del participante en las tres pruebas.
 
-FORMATO DE RESPUESTA (respeta exactamente esta estructura, sin markdown con asteriscos ni símbolos especiales):
+2. RESULTADOS POR PRUEBA
 
-REPORTE DE EVALUACIÓN NEUROPSICOLÓGICA
-Fecha: ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+GO/NO-GO:
+- Describe tiempos de reacción
+- Menciona errores de comisión, omisión y anticipaciones
+- Comenta sobre control inhibitorio de forma descriptiva
 
-1. CONTROL INHIBITORIO - Prueba Go/No-Go
-[Descripción del desempeño en 3-4 párrafos. Interpreta precisión, tiempos de reacción, tipos de errores y comparación entre bloques.]
+STROOP:
+- Compara tiempos congruentes vs incongruentes
+- Describe el índice de interferencia
+- Comenta sobre control cognitivo sin diagnosticar
 
-2. MEMORIA VISOESPACIAL - Secuencia de Colores
-[Descripción en 3-4 párrafos. Interpreta el span, latencia de primera respuesta y velocidad de ejecución.]
+MEMORIA VISOESPACIAL:
+- Describe el span máximo alcanzado
+- Comenta sobre desempeño en secuencias
+- Menciona latencias FRL e IRI
 
-3. ATENCIÓN SELECTIVA - Test de Stroop
-[Descripción en 3-4 párrafos. Interpreta el efecto de interferencia, precisión diferencial y velocidad de respuesta.]
+3. OBSERVACIONES DESCRIPTIVAS
+Identifica patrones en los datos: diferencias entre tareas, consistencia en respuestas, variabilidad en tiempos de reacción.
 
-4. RESUMEN INTEGRADO
-[2-3 párrafos que integren los hallazgos de las tres pruebas y describan el perfil cognitivo general de forma coherente.]
+4. NOTA FINAL
+Incluye siempre: "Este reporte es de carácter descriptivo y no constituye un diagnóstico clínico."
 
-NOTA ACLARATORIA
-Este reporte ha sido generado de forma automatizada con apoyo de inteligencia artificial como herramienta descriptiva. No constituye diagnóstico clínico ni reemplaza la evaluación por un profesional de neuropsicología.`;
+DATOS (${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}):
+
+GO/NO-GO:
+- Precisión total: ${fmt(g.precision_total)}%
+- TR promedio GO: ${fmt(g.rt_promedio)} ms | DE: ${fmt(g.desviacion_estandar)} ms
+- TR mínimo: ${fmt(g.tiempo_minimo)} ms | TR máximo: ${fmt(g.tiempo_maximo)} ms
+- GO correctos: ${fmt(g.go_correctos)}/80 | NO-GO correctos: ${fmt(g.nogo_correctos)}/20
+- Errores omisión: ${fmt(g.errores_omision)} | Errores comisión: ${fmt(g.errores_comision)} | Anticipaciones: ${fmt(g.errores_anticipacion)}
+- TR bloque 1 (1-50): ${fmt(g.promedio_bloque1)} ms | TR bloque 2 (51-100): ${fmt(g.promedio_bloque2)} ms
+
+STROOP:
+- Aciertos totales: ${fmt(t.aciertos_totales)}/40
+- TR congruente: ${fmt(t.media_congruente_ms)} ms (DE: ${fmt(t.rt_congruente_sd)}) | TR incongruente: ${fmt(t.media_incongruente_ms)} ms (DE: ${fmt(t.rt_incongruente_sd)})
+- Índice interferencia: ${fmt(t.indice_interferencia_ms)} ms | Clasificación: ${t.estado_interferencia ?? 'N/A'}
+- Aciertos congruentes: ${fmt(t.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmt(t.aciertos_incongruente)}/20
+- Errores congruentes: ${fmt(t.errores_congruente)} | Errores incongruentes: ${fmt(t.errores_incongruente)} | Anticipaciones: ${fmt(t.anticipaciones)}
+
+MEMORIA VISOESPACIAL:
+- Span máximo: ${fmt(s.span_maximo)} elementos
+- Errores totales: ${fmt(s.errores_totales)}
+- FRL promedio: ${fmt(s.frl_promedio)} ms (DE: ${fmt(s.frl_sd)})
+- IRI promedio: ${fmt(s.iri_promedio)} ms (DE: ${fmt(s.iri_sd)})
+- Total respuestas: ${fmt(s.total_respuestas)}`;
 
 			// 3. Llamar a Gemini API
 			const apiKey = import.meta.env.VITE_GEMINI_KEY ?? '';
 			if (!apiKey) throw new Error('API key de Gemini no configurada.');
 			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

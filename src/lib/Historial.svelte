@@ -317,28 +317,63 @@
 	// ─── Gemini IA ────────────────────────────────────────────────────────────
 	const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY ?? '';
 
+	const REGLAS = `Actúa como un experto en neuropsicología cognitiva.
+REGLAS: NO hagas diagnósticos clínicos. NO afirmes trastornos ni déficits. NO uses lenguaje patologizante. SOLO describe los datos de forma descriptiva. Usa lenguaje técnico pero comprensible. Sin markdown, sin asteriscos. Responde SOLO con el reporte.
+Al final incluye siempre: "Este reporte es de carácter descriptivo y no constituye un diagnóstico clínico."`;
+
 	function buildPrompt(tab: Tab, r: any, g?: any, s?: any, t?: any): string {
 		if (tab === 'evaluacion') {
-			return `Eres un neuropsicólogo clínico redactando un informe técnico en español para un profesional de salud. Se te proporcionan los datos de una evaluación neuropsicológica completa. Describe los resultados con lenguaje técnico pero claro, NO hagas diagnóstico clínico, solo describe e interpreta los hallazgos. Estructura el informe en 4 secciones: 1) Go/No-Go, 2) Stroop, 3) Secuencia de Colores, 4) Síntesis general.
+			return `${REGLAS}
 
-Go/No-Go: precisión=${fmtN(g?.precision_total)}%, RT_promedio=${fmtN(g?.rt_promedio)}ms, SD=${fmtN(g?.desviacion_estandar)}, go_correctos=${fmtN(g?.go_correctos)}, nogo_correctos=${fmtN(g?.nogo_correctos)}, errores_omision=${fmtN(g?.errores_omision)}, errores_comision=${fmtN(g?.errores_comision)}, errores_anticipacion=${fmtN(g?.errores_anticipacion)}.
-Stroop: aciertos=${fmtN(t?.aciertos_totales)}, RT_congruente=${fmtN(t?.media_congruente_ms)}ms, RT_incongruente=${fmtN(t?.media_incongruente_ms)}ms, interferencia=${fmtN(t?.indice_interferencia_ms)}ms, estado=${t?.estado_interferencia ?? 'N/A'}.
-Secuencia: span_maximo=${fmtN(s?.span_maximo)}, errores=${fmtN(s?.errores_totales)}, FRL_promedio=${fmtN(s?.frl_promedio)}ms, IRI_promedio=${fmtN(s?.iri_promedio)}ms.`;
+Genera un reporte con estas secciones: 1. RESUMEN GENERAL, 2. RESULTADOS POR PRUEBA (Go/No-Go, Stroop, Memoria Visoespacial), 3. OBSERVACIONES DESCRIPTIVAS, 4. NOTA FINAL.
+
+GO/NO-GO:
+- Precisión: ${fmtN(g?.precision_total)}% | TR promedio: ${fmtN(g?.rt_promedio)}ms (DE: ${fmtN(g?.desviacion_estandar)})
+- TR mín: ${fmtN(g?.tiempo_minimo)}ms | TR máx: ${fmtN(g?.tiempo_maximo)}ms
+- GO correctos: ${fmtN(g?.go_correctos)}/80 | NO-GO correctos: ${fmtN(g?.nogo_correctos)}/20
+- Errores omisión: ${fmtN(g?.errores_omision)} | Errores comisión: ${fmtN(g?.errores_comision)} | Anticipaciones: ${fmtN(g?.errores_anticipacion)}
+- TR bloque 1: ${fmtN(g?.promedio_bloque1)}ms | TR bloque 2: ${fmtN(g?.promedio_bloque2)}ms
+
+STROOP:
+- Aciertos: ${fmtN(t?.aciertos_totales)}/40 | TR congruente: ${fmtN(t?.media_congruente_ms)}ms (DE: ${fmtN(t?.rt_congruente_sd)}) | TR incongruente: ${fmtN(t?.media_incongruente_ms)}ms (DE: ${fmtN(t?.rt_incongruente_sd)})
+- Índice interferencia: ${fmtN(t?.indice_interferencia_ms)}ms | Clasificación: ${t?.estado_interferencia ?? 'N/A'}
+- Aciertos congruentes: ${fmtN(t?.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmtN(t?.aciertos_incongruente)}/20
+
+MEMORIA VISOESPACIAL:
+- Span máximo: ${fmtN(s?.span_maximo)} elementos | Errores: ${fmtN(s?.errores_totales)}
+- FRL promedio: ${fmtN(s?.frl_promedio)}ms (DE: ${fmtN(s?.frl_sd)}) | IRI promedio: ${fmtN(s?.iri_promedio)}ms (DE: ${fmtN(s?.iri_sd)})`;
 		}
 		if (tab === 'gonogo') {
-			return `Eres un neuropsicólogo clínico redactando un informe técnico en español. Describe e interpreta los resultados de la prueba Go/No-Go (control inhibitorio). NO hagas diagnóstico clínico. Sé profesional, técnico y conciso.
+			return `${REGLAS}
 
-Datos: precisión=${fmtN(r.precision_total)}%, RT_promedio=${fmtN(r.rt_promedio)}ms, SD=${fmtN(r.desviacion_estandar)}, RT_min=${fmtN(r.tiempo_minimo)}ms, RT_max=${fmtN(r.tiempo_maximo)}ms, go_correctos=${fmtN(r.go_correctos)}, nogo_correctos=${fmtN(r.nogo_correctos)}, errores_omision=${fmtN(r.errores_omision)}, errores_comision=${fmtN(r.errores_comision)}, errores_anticipacion=${fmtN(r.errores_anticipacion)}.`;
+Genera un reporte descriptivo de la prueba Go/No-Go con: 1. RESUMEN, 2. RESULTADOS (tiempos de reacción, errores), 3. OBSERVACIONES, 4. NOTA FINAL.
+
+Datos:
+- Precisión: ${fmtN(r.precision_total)}% | TR promedio: ${fmtN(r.rt_promedio)}ms (DE: ${fmtN(r.desviacion_estandar)})
+- TR mín: ${fmtN(r.tiempo_minimo)}ms | TR máx: ${fmtN(r.tiempo_maximo)}ms
+- GO correctos: ${fmtN(r.go_correctos)}/80 | NO-GO correctos: ${fmtN(r.nogo_correctos)}/20
+- Errores omisión: ${fmtN(r.errores_omision)} | Errores comisión: ${fmtN(r.errores_comision)} | Anticipaciones: ${fmtN(r.errores_anticipacion)}`;
 		}
 		if (tab === 'stroop') {
-			return `Eres un neuropsicólogo clínico redactando un informe técnico en español. Describe e interpreta los resultados de la prueba Stroop (control cognitivo). NO hagas diagnóstico clínico.
+			return `${REGLAS}
 
-Datos: aciertos=${fmtN(r.aciertos_totales)}/${fmtN(r.total_ensayos)}, RT_congruente=${fmtN(r.media_congruente_ms)}ms (SD=${fmtN(r.rt_congruente_sd)}), RT_incongruente=${fmtN(r.media_incongruente_ms)}ms (SD=${fmtN(r.rt_incongruente_sd)}), interferencia=${fmtN(r.indice_interferencia_ms)}ms, estado=${r.estado_interferencia ?? 'N/A'}, aciertos_cong=${fmtN(r.aciertos_congruente)}, aciertos_incong=${fmtN(r.aciertos_incongruente)}.`;
+Genera un reporte descriptivo de la prueba Stroop con: 1. RESUMEN, 2. RESULTADOS (tiempos, interferencia, errores), 3. OBSERVACIONES, 4. NOTA FINAL.
+
+Datos:
+- Aciertos: ${fmtN(r.aciertos_totales)}/${fmtN(r.total_ensayos)}
+- TR congruente: ${fmtN(r.media_congruente_ms)}ms (DE: ${fmtN(r.rt_congruente_sd)}) | TR incongruente: ${fmtN(r.media_incongruente_ms)}ms (DE: ${fmtN(r.rt_incongruente_sd)})
+- Índice interferencia: ${fmtN(r.indice_interferencia_ms)}ms | Clasificación: ${r.estado_interferencia ?? 'N/A'}
+- Aciertos congruentes: ${fmtN(r.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmtN(r.aciertos_incongruente)}/20
+- Errores congruentes: ${fmtN(r.errores_congruente)} | Errores incongruentes: ${fmtN(r.errores_incongruente)} | Anticipaciones: ${fmtN(r.anticipaciones)}`;
 		}
-		// secuencia
-		return `Eres un neuropsicólogo clínico redactando un informe técnico en español. Describe e interpreta los resultados de la prueba de Secuencia de Colores (memoria de trabajo). NO hagas diagnóstico clínico.
+		return `${REGLAS}
 
-Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, FRL_promedio=${fmtN(r.frl_promedio)}ms (SD=${fmtN(r.frl_sd)}), IRI_promedio=${fmtN(r.iri_promedio)}ms (SD=${fmtN(r.iri_sd)}), total_respuestas=${fmtN(r.total_respuestas)}.`;
+Genera un reporte descriptivo de la prueba de Memoria Visoespacial Secuencial con: 1. RESUMEN, 2. RESULTADOS (span, latencias), 3. OBSERVACIONES, 4. NOTA FINAL.
+
+Datos:
+- Span máximo: ${fmtN(r.span_maximo)} elementos | Errores totales: ${fmtN(r.errores_totales)}
+- FRL promedio: ${fmtN(r.frl_promedio)}ms (DE: ${fmtN(r.frl_sd)}) | IRI promedio: ${fmtN(r.iri_promedio)}ms (DE: ${fmtN(r.iri_sd)})
+- Total respuestas: ${fmtN(r.total_respuestas)}`;
 	}
 
 	async function exportarPDFIA(texto: string, tab: Tab, id: number, fecha: string) {
@@ -383,7 +418,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 				prompt = buildPrompt(tab, r);
 			}
 			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_KEY}`,
 				{ method: 'POST', headers: { 'Content-Type': 'application/json' },
 				  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
 			);
@@ -570,6 +605,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 											Excel
 										{/if}
 									</button>
+{#if activeTab === 'evaluacion'}
 									<button
 										class="btn-action ia"
 										disabled={loadingRow?.id === row.id}
@@ -581,6 +617,7 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 											✦ IA
 										{/if}
 									</button>
+									{/if}
 								</td>
 							</tr>
 						{/each}
