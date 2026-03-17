@@ -341,7 +341,7 @@ Este reporte ha sido generado de forma automatizada con apoyo de inteligencia ar
 			// 3. Llamar a Gemini API
 			const apiKey = 'AIzaSyC2C6td8dZNYGUpWr1_j-UBu0xnSsw_2Rc';
 			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -352,7 +352,11 @@ Este reporte ha sido generado de forma automatizada con apoyo de inteligencia ar
 				}
 			);
 
-			if (!resp.ok) throw new Error(`Error en la API de Gemini: ${resp.status}`);
+			if (!resp.ok) {
+				const errJson = await resp.json().catch(() => ({}));
+				const msg = (errJson as any)?.error?.message ?? resp.status;
+				throw new Error(`Error Gemini (${resp.status}): ${msg}`);
+			}
 
 			const json = await resp.json();
 			const texto: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';

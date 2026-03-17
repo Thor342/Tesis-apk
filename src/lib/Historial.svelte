@@ -384,11 +384,15 @@ Datos: span_maximo=${fmtN(r.span_maximo)}, errores=${fmtN(r.errores_totales)}, F
 				prompt = buildPrompt(tab, r);
 			}
 			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`,
 				{ method: 'POST', headers: { 'Content-Type': 'application/json' },
 				  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
 			);
 			const json  = await resp.json();
+			if (!resp.ok) {
+				const msg = json?.error?.message ?? resp.status;
+				throw new Error(`Error Gemini (${resp.status}): ${msg}`);
+			}
 			const texto = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 			if (!texto) throw new Error('Sin respuesta de la IA');
 			await exportarPDFIA(texto, tab, r.id, getfecha(tab, r));
