@@ -18,6 +18,23 @@
 	let dataStroop    = $state<any[]>([]);
 	let dataSecuencia = $state<any[]>([]);
 
+	// ─── Código de acceso ─────────────────────────────────────────────────────
+	const CODIGO_ACCESO = '2589';
+	let codigoVerificado = $state(false);
+	let codigoInput      = $state('');
+	let codigoError      = $state(false);
+
+	function verificarCodigo() {
+		if (codigoInput === CODIGO_ACCESO) {
+			codigoVerificado = true;
+			cargar('evaluacion');
+		} else {
+			codigoError = true;
+			setTimeout(() => { codigoInput = ''; codigoError = false; }, 900);
+		}
+	}
+
+
 	const TABLE: Record<Tab, string> = {
 		evaluacion: 'evaluaciones',
 		gonogo:     'gonogo',
@@ -525,34 +542,76 @@ Datos:
 		return dataSecuencia;
 	}
 
-	// Initial load
-	cargar('evaluacion');
+	// Initial load se hace solo después de verificar código
 </script>
 
 <div class="page">
-	<!-- Header -->
-	<header class="header">
-		<button class="btn-back" onclick={() => onVolver?.()}>
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-				stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-			Volver
-		</button>
-		<h1 class="titulo">Historial de Evaluaciones</h1>
-	</header>
 
-	<!-- Tabs -->
-	<nav class="tabs">
-		{#each [['evaluacion','Evaluación'],['gonogo','Go / No-Go'],['stroop','Stroop'],['secuencia','Secuencia']] as [tabId, label]}
-			<button
-				class="tab"
-				class:active={activeTab === tabId}
-				onclick={() => selectTab(tabId)}
-			>{label}</button>
-		{/each}
-	</nav>
+{#if !codigoVerificado}
+	<!-- ── Pantalla de código de acceso ───────────────────────────── -->
+	<div class="pin-screen">
+		<div class="pin-card">
+			<p class="pin-label">Ingresa el código de acceso</p>
 
-	<!-- Panel -->
-	<div class="panel">
+			<!-- Input que captura el código -->
+			<input
+				class="pin-input-real"
+				class:pin-input-error={codigoError}
+				type="password"
+				inputmode="numeric"
+				maxlength="4"
+				placeholder="_ _ _ _"
+				bind:value={codigoInput}
+				oninput={() => { if (codigoInput.length > 4) codigoInput = codigoInput.slice(0,4); codigoError = false; }}
+				onkeydown={(e) => { if (e.key === 'Enter') verificarCodigo(); }}
+			/>
+
+			{#if codigoError}
+				<p class="pin-msg-error">Código incorrecto. Intenta de nuevo.</p>
+			{/if}
+
+			<div class="pin-btns">
+				<button class="pin-btn-regresar" onclick={() => onVolver?.()}>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+						stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+					Regresar
+				</button>
+				<button class="pin-btn-continuar" onclick={verificarCodigo}>
+					Continuar
+				</button>
+			</div>
+		</div>
+	</div>
+
+{:else}
+	<!-- ── Historial ──────────────────────────────────────────────── -->
+	<div class="hist-wrap">
+
+		<!-- Header compacto -->
+		<header class="header">
+			<button class="btn-back" onclick={() => { codigoVerificado = false; codigoInput = ''; onVolver?.(); }}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+					stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+				Volver
+			</button>
+			<h1 class="titulo">Historial</h1>
+		</header>
+
+		<!-- Tabs tipo píldoras -->
+		<nav class="tabs">
+			<div class="tabs-inner">
+				{#each [['evaluacion','Evaluación'],['gonogo','Go / No-Go'],['stroop','Stroop'],['secuencia','Secuencia']] as [tabId, label]}
+					<button
+						class="tab"
+						class:active={activeTab === tabId}
+						onclick={() => selectTab(tabId)}
+					>{label}</button>
+				{/each}
+			</div>
+		</nav>
+
+		<!-- Panel -->
+		<div class="panel">
 		{#if loading}
 			<div class="empty">Cargando...</div>
 		{:else if errorMsg}
@@ -576,25 +635,63 @@ Datos:
 						<tr>
 							<th>ID</th>
 							<th>Fecha</th>
-							{#if activeTab === 'evaluacion'}<th>Estado</th>{/if}
+							{#if activeTab === 'evaluacion'}
+								<th>Estado</th>
+							{:else if activeTab === 'gonogo'}
+								<th>Precisión</th>
+								<th>RT prom. (ms)</th>
+								<th>Err. Omis.</th>
+								<th>Err. Com.</th>
+							{:else if activeTab === 'stroop'}
+								<th>Aciertos</th>
+								<th>Media Cong. (ms)</th>
+								<th>Media Incong. (ms)</th>
+								<th>Interferencia</th>
+							{:else if activeTab === 'secuencia'}
+								<th>Span Máx.</th>
+								<th>Errores</th>
+								<th>FRL prom. (ms)</th>
+								<th>IRI prom. (ms)</th>
+							{/if}
 							<th>Acciones</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each activeData() as row (row.id)}
 							<tr>
-								<td class="cell-id">#{row.id}</td>
-								<td class="cell-fecha">{getfecha(activeTab, row)}</td>
+								<td class="cell-id" data-label="ID">#{row.id}</td>
+								<td class="cell-fecha" data-label="Fecha">{getfecha(activeTab, row)}</td>
+
 								{#if activeTab === 'evaluacion'}
-									<td>
+									<td data-label="Estado">
 										{#if row.completada}
 											<span class="badge ok">Completada</span>
 										{:else}
 											<span class="badge pend">Incompleta</span>
 										{/if}
 									</td>
+								{:else if activeTab === 'gonogo'}
+									<td class="cell-num" data-label="Precisión">{fmtN(row.precision_total)}%</td>
+									<td class="cell-num" data-label="RT prom. (ms)">{fmtN(row.rt_promedio)}</td>
+									<td class="cell-num" data-label="Err. Omis.">{fmtN(row.errores_omision)}</td>
+									<td class="cell-num" data-label="Err. Com.">{fmtN(row.errores_comision)}</td>
+								{:else if activeTab === 'stroop'}
+									<td class="cell-num" data-label="Aciertos">{fmtN(row.aciertos_totales)}/{fmtN(row.total_ensayos)}</td>
+									<td class="cell-num" data-label="Media Cong. (ms)">{fmtN(row.media_congruente_ms)}</td>
+									<td class="cell-num" data-label="Media Incong. (ms)">{fmtN(row.media_incongruente_ms)}</td>
+									<td data-label="Interferencia">
+										<span class="badge {row.estado_interferencia === 'Alta' ? 'err' : row.estado_interferencia === 'Normal' ? 'ok' : 'pend'}">
+											{row.estado_interferencia ?? 'N/A'}
+										</span>
+									</td>
+								{:else if activeTab === 'secuencia'}
+									<td class="cell-num" data-label="Span Máx.">{fmtN(row.span_maximo)}</td>
+									<td class="cell-num" data-label="Errores">{fmtN(row.errores_totales)}</td>
+									<td class="cell-num" data-label="FRL prom. (ms)">{fmtN(row.frl_promedio)}</td>
+									<td class="cell-num" data-label="IRI prom. (ms)">{fmtN(row.iri_promedio)}</td>
 								{/if}
-								<td class="cell-actions">
+
+								<td class="cell-actions" data-label="Acciones">
 									<button
 										class="btn-action pdf"
 										disabled={loadingRow?.id === row.id}
@@ -617,7 +714,7 @@ Datos:
 											Excel
 										{/if}
 									</button>
-{#if activeTab === 'evaluacion'}
+									{#if activeTab === 'evaluacion'}
 									<button
 										class="btn-action ia"
 										disabled={loadingRow?.id === row.id}
@@ -639,7 +736,9 @@ Datos:
 				</table>
 			</div>
 		{/if}
-	</div>
+		</div><!-- /panel -->
+	</div><!-- /hist-wrap -->
+{/if}
 </div>
 
 <style>
@@ -649,75 +748,105 @@ Datos:
 	font-family: Arial, system-ui, -apple-system, 'Segoe UI', sans-serif;
 	display: flex;
 	flex-direction: column;
-	padding: 0 0 40px;
+	padding: 0 0 24px;
 }
 
-/* Header */
-.header {
+/* Contenedor centrado del historial */
+.hist-wrap {
+	width: 100%;
+	max-width: 900px;
+	margin: 32px auto 0;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
 	background: #fff;
+	border-radius: 16px;
+	border: 1px solid #e2e8f0;
+	overflow: hidden;
+	box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+
+/* Header compacto */
+.header {
+	background: #f8fafc;
 	border-bottom: 1px solid #e2e8f0;
-	padding: 16px 24px;
+	padding: 12px 16px;
 	display: flex;
 	align-items: center;
-	gap: 16px;
+	gap: 12px;
 }
 .btn-back {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 5px;
 	background: none;
-	border: 1px solid #e2e8f0;
+	border: none;
 	border-radius: 8px;
-	padding: 7px 14px;
-	font-size: 0.875rem;
-	color: #475569;
+	padding: 6px 10px;
+	font-size: 0.82rem;
+	font-weight: 600;
+	color: #6366f1;
 	cursor: pointer;
-	transition: background 0.15s, color 0.15s;
+	transition: background 0.15s;
+	flex-shrink: 0;
 }
-.btn-back:hover { background: #f1f5f9; color: #0f172a; }
+.btn-back:hover { background: #f0f0ff; }
 .titulo {
 	margin: 0;
-	font-size: 1.25rem;
+	font-size: 1rem;
 	font-weight: 700;
 	color: #0f172a;
 }
 
-/* Tabs */
+/* Tabs tipo píldoras */
 .tabs {
-	background: #fff;
+	background: #f8fafc;
 	border-bottom: 1px solid #e2e8f0;
-	display: flex;
-	gap: 0;
-	padding: 0 24px;
+	padding: 8px 16px;
 }
+.tabs-inner {
+	display: flex;
+	gap: 6px;
+	background: #eef2f7;
+	border-radius: 10px;
+	padding: 4px;
+	width: fit-content;
+	max-width: 100%;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.tabs-inner::-webkit-scrollbar { display: none; }
 .tab {
 	background: none;
 	border: none;
-	border-bottom: 3px solid transparent;
-	padding: 14px 20px;
-	font-size: 0.9rem;
+	border-radius: 7px;
+	padding: 7px 14px;
+	font-size: 0.82rem;
 	font-weight: 600;
 	color: #64748b;
 	cursor: pointer;
-	transition: color 0.15s, border-color 0.15s;
+	transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 .tab:hover { color: #0f172a; }
-.tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+.tab.active {
+	background: #fff;
+	color: #6366f1;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
 
 /* Panel */
 .panel {
 	flex: 1;
-	padding: 24px;
-	max-width: 900px;
-	width: 100%;
-	margin: 0 auto;
+	padding: 12px 16px;
 }
 
 .empty {
 	text-align: center;
-	padding: 60px 20px;
+	padding: 40px 20px;
 	color: #94a3b8;
-	font-size: 0.95rem;
+	font-size: 0.9rem;
 }
 .empty.error { color: #ef4444; }
 
@@ -725,17 +854,17 @@ Datos:
 .toolbar {
 	display: flex;
 	justify-content: flex-end;
-	margin-bottom: 16px;
+	margin-bottom: 10px;
 }
 .btn-todas {
 	display: flex;
 	align-items: center;
-	gap: 7px;
+	gap: 6px;
 	background: #fff;
 	border: 1.5px solid #22c55e;
-	border-radius: 10px;
-	padding: 9px 18px;
-	font-size: 0.875rem;
+	border-radius: 8px;
+	padding: 7px 14px;
+	font-size: 0.8rem;
 	font-weight: 600;
 	color: #16a34a;
 	cursor: pointer;
@@ -746,7 +875,7 @@ Datos:
 /* Table */
 .table-wrap {
 	background: #fff;
-	border-radius: 14px;
+	border-radius: 12px;
 	border: 1px solid #e2e8f0;
 	overflow: hidden;
 	overflow-x: auto;
@@ -759,19 +888,20 @@ thead {
 	background: #f8fafc;
 }
 th {
-	padding: 13px 16px;
-	font-size: 0.8rem;
+	padding: 9px 12px;
+	font-size: 0.72rem;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	color: #64748b;
+	color: #94a3b8;
 	text-align: left;
 	border-bottom: 1px solid #e2e8f0;
+	white-space: nowrap;
 }
 tr + tr td { border-top: 1px solid #f1f5f9; }
 td {
-	padding: 12px 16px;
-	font-size: 0.9rem;
+	padding: 9px 12px;
+	font-size: 0.85rem;
 	color: #334155;
 	vertical-align: middle;
 }
@@ -836,4 +966,228 @@ td {
 }
 .badge.ok   { background: #dcfce7; color: #16a34a; }
 .badge.pend { background: #fef9c3; color: #854d0e; }
+.badge.err  { background: #fee2e2; color: #dc2626; }
+
+.cell-num {
+	font-variant-numeric: tabular-nums;
+	color: #334155;
+	white-space: nowrap;
+}
+
+/* ── PIN screen ──────────────────────────────────────────────────────── */
+.pin-screen {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #f0f4f8;
+	padding: 24px;
+}
+.pin-card {
+	background: #fff;
+	border-radius: 20px;
+	border: 1px solid #e2e8f0;
+	padding: 40px 32px 32px;
+	width: 100%;
+	max-width: 340px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	box-shadow: 0 8px 32px rgba(99,102,241,0.08);
+}
+.pin-label {
+	margin: 0;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: #475569;
+	text-align: center;
+}
+@keyframes shake {
+	0%,100% { transform: translateX(0); }
+	20%      { transform: translateX(-8px); }
+	40%      { transform: translateX(8px); }
+	60%      { transform: translateX(-6px); }
+	80%      { transform: translateX(6px); }
+}
+
+.pin-input-real {
+	width: 100%;
+	border: none;
+	border-bottom: 2px solid #e2e8f0;
+	border-radius: 0;
+	padding: 10px 0;
+	font-size: 1.5rem;
+	font-weight: 700;
+	text-align: center;
+	letter-spacing: 0.5em;
+	color: #0f172a;
+	background: transparent;
+	outline: none;
+	transition: border-color 0.15s;
+}
+.pin-input-real:focus { border-color: #6366f1; }
+.pin-input-error { border-color: #ef4444 !important; animation: shake 0.4s ease; }
+.pin-input-real::placeholder { color: #cbd5e1; letter-spacing: 0.4em; font-size: 1.2rem; }
+.pin-msg-error {
+	margin: -8px 0 0;
+	font-size: 0.8rem;
+	color: #ef4444;
+	font-weight: 600;
+}
+.pin-btns {
+	display: flex;
+	gap: 12px;
+	width: 100%;
+	margin-top: 4px;
+}
+.pin-btn-regresar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1;
+	justify-content: center;
+	background: #fff;
+	border: 1.5px solid #e2e8f0;
+	border-radius: 999px;
+	padding: 13px 16px;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: #475569;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s;
+}
+.pin-btn-regresar:hover { background: #f8fafc; border-color: #94a3b8; }
+.pin-btn-continuar {
+	flex: 1.5;
+	border: none;
+	border-radius: 999px;
+	padding: 13px 16px;
+	font-size: 0.9rem;
+	font-weight: 700;
+	color: #fff;
+	background: linear-gradient(135deg, #16a34a, #15803d);
+	cursor: pointer;
+	transition: opacity 0.15s, transform 0.1s;
+	box-shadow: 0 4px 14px rgba(22,163,74,0.3);
+}
+.pin-btn-continuar:hover  { opacity: 0.92; }
+.pin-btn-continuar:active { transform: scale(0.97); }
+
+/* ── Responsive móvil ───────────────────────────────────────────────── */
+@media (max-width: 600px) {
+	/* Header */
+	.header {
+		padding: 12px 16px;
+		gap: 10px;
+	}
+	.titulo {
+		font-size: 1rem;
+	}
+	.btn-back {
+		padding: 6px 10px;
+		font-size: 0.8rem;
+		flex-shrink: 0;
+	}
+
+	/* Tabs: scroll horizontal sin barra */
+	.tabs {
+		padding: 0 8px;
+		overflow-x: auto;
+		scrollbar-width: none;
+		-webkit-overflow-scrolling: touch;
+	}
+	.tabs::-webkit-scrollbar { display: none; }
+	.tab {
+		padding: 12px 14px;
+		font-size: 0.82rem;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	/* Panel */
+	.panel {
+		padding: 12px;
+	}
+
+	/* Toolbar */
+	.toolbar {
+		margin-bottom: 12px;
+	}
+	.btn-todas {
+		width: 100%;
+		justify-content: center;
+		padding: 10px;
+	}
+
+	/* Tabla → tarjetas */
+	.table-wrap {
+		border-radius: 12px;
+		overflow-x: visible;
+	}
+	table  { display: block; }
+	thead  { display: none; }
+	tbody  { display: flex; flex-direction: column; }
+
+	tr {
+		display: flex;
+		flex-direction: column;
+		padding: 14px 16px;
+		gap: 4px;
+	}
+	tr + tr {
+		border-top: 1px solid #f1f5f9;
+	}
+	/* anular el selector original que apunta a td */
+	tr + tr td { border-top: none; }
+
+	td {
+		padding: 0;
+		font-size: 0.875rem;
+		border: none;
+	}
+
+	.cell-id {
+		font-size: 0.78rem;
+		color: #6366f1;
+		font-weight: 700;
+	}
+	.cell-fecha {
+		font-size: 0.82rem;
+		color: #94a3b8;
+	}
+
+	/* Botones de acción: fila completa */
+	.cell-actions {
+		margin-top: 10px;
+		gap: 6px;
+		flex-wrap: nowrap;
+	}
+	.btn-action {
+		flex: 1;
+		min-width: 0;
+		padding: 9px 6px;
+		font-size: 0.82rem;
+	}
+
+	/* Etiquetas en tarjetas mobile via data-label */
+	td[data-label]:not(.cell-id):not(.cell-fecha):not(.cell-actions)::before {
+		content: attr(data-label) ": ";
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: #94a3b8;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		display: block;
+		margin-bottom: 1px;
+	}
+	.cell-num {
+		font-size: 0.88rem;
+	}
+
+	/* PIN en móvil */
+	.pin-card {
+		padding: 28px 20px 24px;
+	}
+}
 </style>
