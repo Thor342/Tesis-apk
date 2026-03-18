@@ -309,7 +309,7 @@
 				{/if}
 
 				{#if onVolver}
-					<button class="btn-volver" onclick={onVolver}>← Volver al menú</button>
+					<button class="btn-volver" onclick={onVolver}>← Volver al Dashboard</button>
 				{/if}
 			</div>
 		</div>

@@ -1056,8 +1056,8 @@
             </div>
 
             <button class="btn-primary-intro" onclick={startGame}>Comenzar Prueba</button>
-            {#if onVolver && !modoEvaluacion}
-                <button class="btn-outline-intro" onclick={onVolver}>Volver</button>
+            {#if onVolver}
+                <button class="btn-outline-intro" onclick={onVolver}>← Volver al Dashboard</button>
             {/if}
 
         </div>
@@ -1358,7 +1358,7 @@
 
                 {#if onVolver}
 
-                    <button class="btn-secondary" onclick={onVolver}>← Volver al menú</button>
+                    <button class="btn-secondary" onclick={onVolver}>← Volver al Dashboard</button>
 
                 {/if}
 

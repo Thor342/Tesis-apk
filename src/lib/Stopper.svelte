@@ -428,8 +428,8 @@
 
             <div class="actions-stack">
                 <button class="btn-primary" onclick={() => iniciarFase('practica')}>Comenzar Entrenamiento</button>
-                {#if onVolver && !modoEvaluacion}
-                    <button class="btn-outline-pill" onclick={onVolver}>Volver al Dashboard</button>
+                {#if onVolver}
+                    <button class="btn-outline-pill" onclick={onVolver}>← Volver al Dashboard</button>
                 {/if}
             </div>
         </div>
@@ -545,8 +545,8 @@
                     <button class="btn-primary" onclick={onTerminar}>Continuar evaluación →</button>
                 {/if}
                 <button class="btn-outline-pill" onclick={() => iniciarFase('practica')}>Reiniciar prueba</button>
-                {#if onVolver && !modoEvaluacion}
-                    <button class="btn-outline-pill" onclick={onVolver}>Finalizar Sesión</button>
+                {#if onVolver}
+                    <button class="btn-outline-pill" onclick={onVolver}>← Volver al Dashboard</button>
                 {/if}
             </div>
         </div>

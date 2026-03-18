@@ -1,4 +1,5 @@
 const CACHE = 'neuropsico-v1';
+const ORIGIN = self.location.origin;
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -20,6 +21,10 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  // No interceptar peticiones cross-origin (ej. Supabase API)
+  if (!e.request.url.startsWith(ORIGIN)) return;
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -27,6 +32,10 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() =>
+        caches.match(e.request).then(cached =>
+          cached || new Response('Sin conexión', { status: 503, statusText: 'Service Unavailable' })
+        )
+      )
   );
 });
