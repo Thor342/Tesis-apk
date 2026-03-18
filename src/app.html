@@ -1,13 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Evaluación Neuropsicológica</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>NeuroPsico</title>
+
+		<!-- PWA -->
+		<link rel="manifest" href="/manifest.json" />
+		<meta name="theme-color" content="#1e293b" />
+
+		<!-- iOS Safari PWA -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="NeuroPsico" />
+		<link rel="apple-touch-icon" href="/favicon.png" />
+
 		<link rel="icon" href="/favicon.png" type="image/png" />
+
 %sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover" style="margin:0; background:#f0f4f8;">
 		<div style="display: contents">%sveltekit.body%</div>
+		<script>
+			if ('serviceWorker' in navigator) {
+				navigator.serviceWorker.register('/sw.js');
+			}
+		</script>
 	</body>
 </html>
