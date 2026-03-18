@@ -2,7 +2,7 @@
 
     import { tick } from 'svelte';
 
-    import { fly, fade } from 'svelte/transition';
+    import { fly } from 'svelte/transition';
 
     import { Capacitor } from '@capacitor/core';
 
@@ -1018,101 +1018,47 @@
 
     {#if gameState === 'start'}
 
-        <div class="start-screen">
+        <div class="intro-card" in:fly={{ y: 20, duration: 500 }}>
 
+            <h2 class="intro-title">Go / No-Go</h2>
+            <p class="intro-subtitle">Reacciona solo cuando corresponda</p>
 
+            <div class="intro-steps">
 
-            <!-- Título -->
-
-            <div class="start-header" in:fly={{ y: -30, duration: 600 }}>
-
-                <p class="start-hint">
-
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-
-                    Lee atentamente las instrucciones
-
-                </p>
-
-            </div>
-
-
-
-            <!-- Tarjetas GO / NO GO -->
-
-            <div class="start-grid">
-
-                <div class="instr-card" in:fly={{ x: -50, duration: 600, delay: 200 }}>
-
-                    <div class="instr-circle circle-go"></div>
-
-                    <p class="instr-accion go-accion">👆 Toca</p>
-
-                    <p class="instr-desc">tan rápido como puedas</p>
-
+                <div class="intro-step">
+                    <div class="circle-go-instr"></div>
+                    <div class="step-text">
+                        <strong class="go-label">👆 Toca</strong>
+                        <span>Cuando veas el círculo <strong style="color:#16a34a">verde</strong>, toca tan rápido como puedas</span>
+                    </div>
                 </div>
 
+                <div class="step-arrow">↓</div>
 
+                <div class="intro-step">
+                    <div class="circle-nogo-instr"></div>
+                    <div class="step-text">
+                        <strong class="nogo-label">✋ No toques</strong>
+                        <span>Cuando veas el círculo <strong style="color:#dc2626">rojo</strong>, quédate quieto</span>
+                    </div>
+                </div>
 
-                <div class="instr-card" in:fly={{ x: 50, duration: 600, delay: 300 }}>
+                <div class="step-arrow">↓</div>
 
-                    <div class="instr-circle circle-nogo"></div>
-
-                    <p class="instr-accion nogo-accion">✋ No toques</p>
-
-                    <p class="instr-desc">quédate quieto</p>
-
+                <div class="intro-step">
+                    <div class="step-icon" style="background:#fef9c3">⚡</div>
+                    <div class="step-text">
+                        <strong>Práctica primero</strong>
+                        <span>{PRACTICE_COUNT} ensayos de práctica antes de comenzar</span>
+                    </div>
                 </div>
 
             </div>
 
-
-
-            <!-- Banner práctica -->
-
-            <div class="practica-banner" in:fly={{ y: 20, duration: 600, delay: 400 }}>
-
-                <p>
-
-                    Primero realizarás
-
-                    <strong class="practica-num">{PRACTICE_COUNT} ensayos de práctica</strong>
-
-                    (no se registran).
-
-                </p>
-
-            </div>
-
-
-
-            <!-- Botones acción -->
-
-            <div class="start-botones" in:fade={{ duration: 500, delay: 500 }}>
-
-                <button class="btn-volver-start" onclick={onVolver ?? (() => {})}>
-
-                    <span class="arrow-left-icon">
-
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-
-                    </span>
-
-                    Volver
-
-                </button>
-
-                <button class="btn-iniciar-start" onclick={startGame}>
-
-                    Iniciar Test
-
-                    <span class="arrow-bounce" aria-hidden="true">→</span>
-
-                </button>
-
-            </div>
-
-
+            <button class="btn-primary-intro" onclick={startGame}>Comenzar Prueba</button>
+            {#if onVolver && !modoEvaluacion}
+                <button class="btn-outline-intro" onclick={onVolver}>Volver</button>
+            {/if}
 
         </div>
 
@@ -1466,108 +1412,82 @@
 
 /* ── Start Screen ────────────────────────────────────────────────────────── */
 
-.start-screen {
-
-    display: flex; flex-direction: column; align-items: center;
-
-    gap: 28px; width: 100%; max-width: 560px; padding: 0 16px;
-
+.intro-card {
+    background: white; border-radius: 2rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    padding: 2rem 1.75rem; width: min(400px, 100%);
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 0;
 }
 
-.start-header { text-align: center; }
-
-
-.start-hint {
-
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-
-    color: #64748b; font-size: 0.9rem; margin: 0;
-
+.intro-title {
+    font-size: 1.8rem; font-weight: 900; color: #1e293b;
+    margin: 0 0 4px; text-align: center;
 }
 
-.start-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; }
-
-.instr-card {
-
-    background: #f8fafc; border: 1px solid #e2e8f0;
-
-    border-radius: 20px; padding: 24px 16px; text-align: center;
-
-    display: flex; flex-direction: column; align-items: center; gap: 12px;
-
+.intro-subtitle {
+    color: #64748b; font-size: 1rem; text-align: center;
+    margin: 0 0 1.5rem; font-weight: 500;
 }
 
-.instr-circle {
-
-    width: 80px; height: 80px; border-radius: 50%;
-
+.intro-steps {
+    background: #f8fafc; border-radius: 1.2rem;
+    padding: 1.2rem 1rem; margin-bottom: 1.5rem;
+    display: flex; flex-direction: column; gap: 0;
 }
 
-.circle-go   { background: radial-gradient(circle, #4ade80, #16a34a); }
-
-.circle-nogo { background: radial-gradient(circle, #f87171, #dc2626); }
-
-.instr-accion { font-size: 1.15rem; font-weight: 800; margin: 0; letter-spacing: 0.01em; }
-
-.go-accion   { color: #16a34a; }
-
-.nogo-accion { color: #dc2626; }
-
-.instr-desc { font-size: 0.8rem; color: #94a3b8; margin: 2px 0 0; }
-
-.practica-banner {
-
-    background: #f8fafc; border: 1px solid #e2e8f0;
-
-    border-radius: 14px; padding: 14px 20px; text-align: center; width: 100%;
-
+.intro-step {
+    display: flex; align-items: center; gap: 14px;
 }
 
-.practica-banner p { color: #475569; margin: 0; font-size: 0.9rem; }
-
-.practica-num { color: #fbbf24; }
-
-.start-botones { display: flex; gap: 12px; width: 100%; }
-
-.btn-volver-start {
-
-    display: flex; align-items: center; gap: 8px;
-
-    padding: 14px 24px; border-radius: 999px;
-
-    border: 2px solid #e2e8f0; background: transparent;
-
-    color: #475569; font-size: 0.95rem; cursor: pointer;
-
-    transition: background 0.2s ease, border-color 0.2s ease;
-
+.step-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; flex-shrink: 0;
 }
 
-.btn-volver-start:hover { background: #f1f5f9; border-color: #cbd5e1; }
-
-.arrow-left-icon { display: flex; align-items: center; }
-
-.btn-iniciar-start {
-
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
-
-    padding: 14px 24px; border-radius: 999px; border: none;
-
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-
-    color: white; font-size: 1rem; font-weight: 700; cursor: pointer;
-
-    box-shadow: 0 10px 30px rgba(99,102,241,0.4);
-
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-
+.step-text {
+    display: flex; flex-direction: column; gap: 2px;
 }
 
-.btn-iniciar-start:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(99,102,241,0.55); }
+.step-text strong {
+    font-size: 0.95rem; font-weight: 700; color: #1e293b;
+}
 
-@keyframes bounce { 0%,100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+.step-text span {
+    font-size: 0.82rem; color: #64748b;
+}
 
-.arrow-bounce { animation: bounce 1.2s ease infinite; }
+.step-arrow {
+    text-align: center; color: #cbd5e1; font-size: 1rem;
+    padding: 6px 0;
+}
+
+.circle-go-instr {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    background: radial-gradient(circle, #4ade80, #16a34a);
+}
+
+.circle-nogo-instr {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    background: radial-gradient(circle, #f87171, #dc2626);
+}
+
+.go-label   { color: #16a34a !important; }
+.nogo-label { color: #dc2626 !important; }
+
+.btn-primary-intro {
+    background: #1e293b; color: white; border: none;
+    padding: 1rem; border-radius: 1rem; width: 100%;
+    font-weight: 700; font-size: 1rem; cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.btn-outline-intro {
+    background: transparent; border: 2px solid #e2e8f0;
+    padding: 0.8rem; border-radius: 50px; cursor: pointer;
+    width: 100%; font-weight: 600; color: #64748b; font-size: 0.95rem;
+}
 
 
 
@@ -1793,13 +1713,9 @@
 
 @media (max-width: 480px) {
 
-    .start-grid { grid-template-columns: 1fr; }
-
     .analysis-row { grid-template-columns: 1fr; }
 
     .results-grid { grid-template-columns: 1fr 1fr; }
-
-    .start-botones { flex-direction: column; }
 
 }
 

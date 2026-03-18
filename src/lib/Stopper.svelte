@@ -436,12 +436,6 @@
 
     {:else if phase === 'practica' || phase === 'test'}
         <div class="game-container animate-in">
-            <div class="top-nav">
-                <div class="level-badge">
-                    {phase === 'practica' ? 'ENTRENAMIENTO' : 'EVALUACIÓN'}: {indiceActual + 1} / {listaEnsayos.length}
-                </div>
-            </div>
-
             {#if enISI}
                 <div class="fixation-wrap">
                     <span class="fixation">+</span>
@@ -569,8 +563,6 @@
     .error-icon { color: #e11d48; }
 
     .game-container { width: 100%; max-width: 500px; text-align: center; padding: 0 20px; box-sizing: border-box; }
-    .top-nav { margin-bottom: 1rem; }
-    .level-badge { display: inline-block; background: #e2e8f0; padding: 5px 15px; border-radius: 20px; font-weight: bold; color: #475569; font-size: 0.85rem; }
     .stroop-word { font-size: clamp(2.2rem, 10vw, 4.5rem); font-weight: 900; margin: 2rem 0; user-select: none; word-break: break-word; line-height: 1.1; }
     .fixation-wrap { height: 180px; display: flex; align-items: center; justify-content: center; }
     .fixation { font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 300; color: #94a3b8; user-select: none; }
