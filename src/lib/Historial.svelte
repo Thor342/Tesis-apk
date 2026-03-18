@@ -331,141 +331,7 @@
 		await saveXlsx(wb, `evaluacion_${r.id}.xlsx`);
 	}
 
-	// ─── Gemini IA ────────────────────────────────────────────────────────────
-	const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY ?? '';
-
-	const REGLAS = `Actúa como un experto en neuropsicología cognitiva.
-REGLAS: NO hagas diagnósticos clínicos. NO afirmes trastornos ni déficits. NO uses lenguaje patologizante. SOLO describe los datos de forma descriptiva. Usa lenguaje técnico pero comprensible. Sin markdown, sin asteriscos. Responde SOLO con el reporte.
-Al final incluye siempre: "Este reporte es de carácter descriptivo y no constituye un diagnóstico clínico."`;
-
-	function buildPrompt(tab: Tab, r: any, g?: any, s?: any, t?: any): string {
-		if (tab === 'evaluacion') {
-			return `${REGLAS}
-
-Genera un reporte con estas secciones: 1. RESUMEN GENERAL, 2. RESULTADOS POR PRUEBA (Go/No-Go, Stroop, Memoria Visoespacial), 3. OBSERVACIONES DESCRIPTIVAS, 4. NOTA FINAL.
-
-GO/NO-GO:
-- Precisión: ${fmtN(g?.precision_total)}% | TR promedio: ${fmtN(g?.rt_promedio)}ms (DE: ${fmtN(g?.desviacion_estandar)})
-- TR mín: ${fmtN(g?.tiempo_minimo)}ms | TR máx: ${fmtN(g?.tiempo_maximo)}ms
-- GO correctos: ${fmtN(g?.go_correctos)}/80 | NO-GO correctos: ${fmtN(g?.nogo_correctos)}/20
-- Errores omisión: ${fmtN(g?.errores_omision)} | Errores comisión: ${fmtN(g?.errores_comision)} | Anticipaciones: ${fmtN(g?.errores_anticipacion)}
-- TR bloque 1: ${fmtN(g?.promedio_bloque1)}ms | TR bloque 2: ${fmtN(g?.promedio_bloque2)}ms
-
-STROOP:
-- Aciertos: ${fmtN(t?.aciertos_totales)}/40 | TR congruente: ${fmtN(t?.media_congruente_ms)}ms (DE: ${fmtN(t?.rt_congruente_sd)}) | TR incongruente: ${fmtN(t?.media_incongruente_ms)}ms (DE: ${fmtN(t?.rt_incongruente_sd)})
-- Índice interferencia: ${fmtN(t?.indice_interferencia_ms)}ms | Clasificación: ${t?.estado_interferencia ?? 'N/A'}
-- Aciertos congruentes: ${fmtN(t?.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmtN(t?.aciertos_incongruente)}/20
-
-MEMORIA VISOESPACIAL:
-- Span máximo: ${fmtN(s?.span_maximo)} elementos | Errores: ${fmtN(s?.errores_totales)}
-- FRL promedio: ${fmtN(s?.frl_promedio)}ms (DE: ${fmtN(s?.frl_sd)}) | IRI promedio: ${fmtN(s?.iri_promedio)}ms (DE: ${fmtN(s?.iri_sd)})`;
-		}
-		if (tab === 'gonogo') {
-			return `${REGLAS}
-
-Genera un reporte descriptivo de la prueba Go/No-Go con: 1. RESUMEN, 2. RESULTADOS (tiempos de reacción, errores), 3. OBSERVACIONES, 4. NOTA FINAL.
-
-Datos:
-- Precisión: ${fmtN(r.precision_total)}% | TR promedio: ${fmtN(r.rt_promedio)}ms (DE: ${fmtN(r.desviacion_estandar)})
-- TR mín: ${fmtN(r.tiempo_minimo)}ms | TR máx: ${fmtN(r.tiempo_maximo)}ms
-- GO correctos: ${fmtN(r.go_correctos)}/80 | NO-GO correctos: ${fmtN(r.nogo_correctos)}/20
-- Errores omisión: ${fmtN(r.errores_omision)} | Errores comisión: ${fmtN(r.errores_comision)} | Anticipaciones: ${fmtN(r.errores_anticipacion)}`;
-		}
-		if (tab === 'stroop') {
-			return `${REGLAS}
-
-Genera un reporte descriptivo de la prueba Stroop con: 1. RESUMEN, 2. RESULTADOS (tiempos, interferencia, errores), 3. OBSERVACIONES, 4. NOTA FINAL.
-
-Datos:
-- Aciertos: ${fmtN(r.aciertos_totales)}/${fmtN(r.total_ensayos)}
-- TR congruente: ${fmtN(r.media_congruente_ms)}ms (DE: ${fmtN(r.rt_congruente_sd)}) | TR incongruente: ${fmtN(r.media_incongruente_ms)}ms (DE: ${fmtN(r.rt_incongruente_sd)})
-- Índice interferencia: ${fmtN(r.indice_interferencia_ms)}ms | Clasificación: ${r.estado_interferencia ?? 'N/A'}
-- Aciertos congruentes: ${fmtN(r.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmtN(r.aciertos_incongruente)}/20
-- Errores congruentes: ${fmtN(r.errores_congruente)} | Errores incongruentes: ${fmtN(r.errores_incongruente)} | Anticipaciones: ${fmtN(r.anticipaciones)}`;
-		}
-		return `${REGLAS}
-
-Genera un reporte descriptivo de la prueba de Memoria Visoespacial Secuencial con: 1. RESUMEN, 2. RESULTADOS (span, latencias), 3. OBSERVACIONES, 4. NOTA FINAL.
-
-Datos:
-- Span máximo: ${fmtN(r.span_maximo)} elementos | Errores totales: ${fmtN(r.errores_totales)}
-- FRL promedio: ${fmtN(r.frl_promedio)}ms (DE: ${fmtN(r.frl_sd)}) | IRI promedio: ${fmtN(r.iri_promedio)}ms (DE: ${fmtN(r.iri_sd)})
-- Total respuestas: ${fmtN(r.total_respuestas)}`;
-	}
-
-	async function exportarPDFIA(texto: string, tab: Tab, id: number, fecha: string) {
-		const { jsPDF } = await import('jspdf');
-		const doc    = new jsPDF({ unit: 'pt', format: 'a4' });
-		const pW     = doc.internal.pageSize.getWidth();
-		const pH     = doc.internal.pageSize.getHeight();
-		const m      = 45, maxW = pW - m * 2;
-		let y = m;
-
-		function chk(n = 14) { if (y + n > pH - m) { doc.addPage(); y = m; } }
-
-		doc.setFillColor(124, 58, 237);
-		doc.rect(0, 0, pW, 60, 'F');
-		doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(255,255,255);
-		doc.text('Reporte con Inteligencia Artificial', m, m + 4); y += 28;
-		doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-		doc.text(`Fecha: ${fecha}   ·   ID: ${id}   ·   Modelo: Gemini 2.0 Flash`, m, y); y += 30;
-
-		doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 41, 59);
-		const lines = texto.split('\n');
-		for (const line of lines) {
-			const isTitle = /^#{1,3}\s/.test(line) || /^\*\*/.test(line);
-			const clean   = line.replace(/^#{1,3}\s*/, '').replace(/\*\*/g, '').trim();
-			if (!clean) { y += 6; continue; }
-			doc.setFont('helvetica', isTitle ? 'bold' : 'normal');
-			doc.setFontSize(isTitle ? 11 : 10);
-			const wrapped = doc.splitTextToSize(clean, maxW) as string[];
-			for (const l of wrapped) { chk(); doc.text(l, m, y); y += isTitle ? 16 : 14; }
-		}
-		await savePDF(doc, `ia_${tab}_${id}.pdf`);
-	}
-
-	async function reporteIA(tab: Tab, r: any) {
-		loadingRow = { id: r.id, action: 'ia' };
-		try {
-			// Si ya fue generado antes, solo descargar
-			if (r.reporte_ia) {
-				await exportarPDFIA(r.reporte_ia, tab, r.id, getfecha(tab, r));
-				loadingRow = null;
-				return;
-			}
-
-			let prompt = '';
-			if (tab === 'evaluacion') {
-				const { g, s, t } = await fetchCombinado(r.id);
-				prompt = buildPrompt(tab, r, g, s, t);
-			} else {
-				prompt = buildPrompt(tab, r);
-			}
-			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_KEY}`,
-				{ method: 'POST', headers: { 'Content-Type': 'application/json' },
-				  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-			);
-			const json  = await resp.json();
-			if (!resp.ok) {
-				const msg = json?.error?.message ?? resp.status;
-				throw new Error(`Error Gemini (${resp.status}): ${msg}`);
-			}
-			const texto = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-			if (!texto) throw new Error('Sin respuesta de la IA');
-
-			// Guardar en BD y actualizar fila local
-			await supabase.from('evaluaciones').update({ reporte_ia: texto }).eq('id', r.id);
-			dataEval = dataEval.map(row => row.id === r.id ? { ...row, reporte_ia: texto } : row);
-
-			await exportarPDFIA(texto, tab, r.id, getfecha(tab, r));
-		} catch (e: any) {
-			alert('Error IA: ' + (e.message ?? 'Error desconocido'));
-		}
-		loadingRow = null;
-	}
-
-	async function accionRow(tab: Tab, r: any, action: 'pdf' | 'excel' | 'ia') {
+	async function accionRow(tab: Tab, r: any, action: 'pdf' | 'excel') {
 		loadingRow = { id: r.id, action };
 		try {
 			if (action === 'pdf') {
@@ -478,9 +344,6 @@ Datos:
 				else if (tab === 'gonogo') await excelGonogo(r);
 				else if (tab === 'stroop') await excelStroop(r);
 				else                       await excelSecuencia(r);
-			} else {
-				await reporteIA(tab, r);
-				return; // reporteIA manages loadingRow itself
 			}
 		} catch (e: any) {
 			alert('Error: ' + (e.message ?? 'Error desconocido'));
@@ -714,22 +577,7 @@ Datos:
 											Excel
 										{/if}
 									</button>
-									{#if activeTab === 'evaluacion'}
-									<button
-										class="btn-action ia"
-										disabled={loadingRow?.id === row.id}
-										onclick={() => accionRow(activeTab, row, 'ia')}
-									>
-										{#if loadingRow?.id === row.id && loadingRow?.action === 'ia'}
-											<span class="spinner"></span>
-										{:else if row.reporte_ia}
-											⬇ IA
-										{:else}
-											✦ IA
-										{/if}
-									</button>
-									{/if}
-								</td>
+									</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -939,11 +787,9 @@ td {
 
 .btn-action.pdf   { background: #fee2e2; color: #dc2626; }
 .btn-action.excel { background: #dcfce7; color: #16a34a; }
-.btn-action.ia    { background: #ede9fe; color: #7c3aed; }
 
 .btn-action.pdf:not(:disabled):hover   { background: #fecaca; }
 .btn-action.excel:not(:disabled):hover { background: #bbf7d0; }
-.btn-action.ia:not(:disabled):hover    { background: #ddd6fe; }
 
 /* Spinner */
 .spinner {

@@ -16,11 +16,9 @@
 	let evaluacionId = $state<number | undefined>(undefined);
 
 	// ─── Estado de descargas ─────────────────────────────────────────────────
-	let generandoPDF     = $state(false);
-	let generandoExcel   = $state(false);
-	let generandoReporte = $state(false);
-	let errorReporte     = $state<string | null>(null);
-	let textoReporteIA   = $state<string | null>(null); // null = no generado aún
+	let generandoPDF   = $state(false);
+	let generandoExcel = $state(false);
+	let errorReporte   = $state<string | null>(null);
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────
 	function fmtN(v: number | null | undefined) {
@@ -251,259 +249,10 @@
 				.from('evaluaciones')
 				.update({ fecha_fin: new Date().toISOString(), completada: true })
 				.eq('id', evaluacionId);
-			// Verificar si ya existe reporte IA guardado
-			const { data } = await supabase
-				.from('evaluaciones')
-				.select('reporte_ia')
-				.eq('id', evaluacionId)
-				.single();
-			textoReporteIA = data?.reporte_ia ?? null;
-		}
+			}
 		fase = 'fin';
 	}
 
-	// ─── Reporte con IA (Gemini) ──────────────────────────────────────────────
-	async function generarReporteIA() {
-		if (!evaluacionId) return;
-		generandoReporte = true;
-		errorReporte     = null;
-
-		try {
-			// 1. Obtener resultados de las 3 pruebas desde Supabase
-			const [resGonogo, resSecuencia, resStroop] = await Promise.all([
-				supabase.from('gonogo').select('*').eq('evaluacion_id', evaluacionId).single(),
-				supabase.from('secuencia').select('*').eq('evaluacion_id', evaluacionId).single(),
-				supabase.from('resultados_stroop').select('*').eq('evaluacion_id', evaluacionId).single(),
-			]);
-
-			if (resGonogo.error || resSecuencia.error || resStroop.error) {
-				throw new Error('No se pudieron obtener los resultados de la evaluación.');
-			}
-
-			const g = resGonogo.data;
-			const s = resSecuencia.data;
-			const t = resStroop.data;
-
-			const fmt = (v: number | null | undefined) =>
-				v === null || v === undefined ? 'No disponible' : Number.isInteger(v) ? String(v) : Number(v).toFixed(1);
-
-			// 2. Construir prompt
-			const prompt = `Actúa como un experto en neuropsicología cognitiva.
-
-Vas a recibir datos de una batería digital compuesta por tres pruebas:
-1. Go/No-Go (control inhibitorio)
-2. Stroop (control cognitivo e interferencia)
-3. Memoria visoespacial secuencial
-
-Tu tarea es generar un REPORTE CLARO, PROFESIONAL Y BIEN REDACTADO.
-
-REGLAS IMPORTANTES:
-- NO hagas diagnósticos clínicos
-- NO afirmes trastornos ni déficits
-- NO uses lenguaje patologizante
-- SOLO describe los datos de forma DESCRIPTIVA
-- Usa lenguaje técnico pero comprensible
-- Responde SOLO con el reporte, sin explicaciones adicionales
-- Sin markdown, sin asteriscos, sin símbolos especiales
-
-ESTRUCTURA DEL REPORTE:
-
-1. RESUMEN GENERAL
-Describe de forma breve el desempeño global del participante en las tres pruebas.
-
-2. RESULTADOS POR PRUEBA
-
-GO/NO-GO:
-- Describe tiempos de reacción
-- Menciona errores de comisión, omisión y anticipaciones
-- Comenta sobre control inhibitorio de forma descriptiva
-
-STROOP:
-- Compara tiempos congruentes vs incongruentes
-- Describe el índice de interferencia
-- Comenta sobre control cognitivo sin diagnosticar
-
-MEMORIA VISOESPACIAL:
-- Describe el span máximo alcanzado
-- Comenta sobre desempeño en secuencias
-- Menciona latencias FRL e IRI
-
-3. OBSERVACIONES DESCRIPTIVAS
-Identifica patrones en los datos: diferencias entre tareas, consistencia en respuestas, variabilidad en tiempos de reacción.
-
-4. NOTA FINAL
-Incluye siempre: "Este reporte es de carácter descriptivo y no constituye un diagnóstico clínico."
-
-DATOS (${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}):
-
-GO/NO-GO:
-- Precisión total: ${fmt(g.precision_total)}%
-- TR promedio GO: ${fmt(g.rt_promedio)} ms | DE: ${fmt(g.desviacion_estandar)} ms
-- TR mínimo: ${fmt(g.tiempo_minimo)} ms | TR máximo: ${fmt(g.tiempo_maximo)} ms
-- GO correctos: ${fmt(g.go_correctos)}/80 | NO-GO correctos: ${fmt(g.nogo_correctos)}/20
-- Errores omisión: ${fmt(g.errores_omision)} | Errores comisión: ${fmt(g.errores_comision)} | Anticipaciones: ${fmt(g.errores_anticipacion)}
-- TR bloque 1 (1-50): ${fmt(g.promedio_bloque1)} ms | TR bloque 2 (51-100): ${fmt(g.promedio_bloque2)} ms
-
-STROOP:
-- Aciertos totales: ${fmt(t.aciertos_totales)}/40
-- TR congruente: ${fmt(t.media_congruente_ms)} ms (DE: ${fmt(t.rt_congruente_sd)}) | TR incongruente: ${fmt(t.media_incongruente_ms)} ms (DE: ${fmt(t.rt_incongruente_sd)})
-- Índice interferencia: ${fmt(t.indice_interferencia_ms)} ms | Clasificación: ${t.estado_interferencia ?? 'N/A'}
-- Aciertos congruentes: ${fmt(t.aciertos_congruente)}/20 | Aciertos incongruentes: ${fmt(t.aciertos_incongruente)}/20
-- Errores congruentes: ${fmt(t.errores_congruente)} | Errores incongruentes: ${fmt(t.errores_incongruente)} | Anticipaciones: ${fmt(t.anticipaciones)}
-
-MEMORIA VISOESPACIAL:
-- Span máximo: ${fmt(s.span_maximo)} elementos
-- Errores totales: ${fmt(s.errores_totales)}
-- FRL promedio: ${fmt(s.frl_promedio)} ms (DE: ${fmt(s.frl_sd)})
-- IRI promedio: ${fmt(s.iri_promedio)} ms (DE: ${fmt(s.iri_sd)})
-- Total respuestas: ${fmt(s.total_respuestas)}`;
-
-			// 3. Llamar a Gemini API
-			const apiKey = import.meta.env.VITE_GEMINI_KEY ?? '';
-			if (!apiKey) throw new Error('API key de Gemini no configurada.');
-			const resp = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						contents: [{ parts: [{ text: prompt }] }],
-						generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
-					})
-				}
-			);
-
-			if (!resp.ok) {
-				const errJson = await resp.json().catch(() => ({}));
-				const msg = (errJson as any)?.error?.message ?? resp.status;
-				throw new Error(`Error Gemini (${resp.status}): ${msg}`);
-			}
-
-			const json = await resp.json();
-			const texto: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-			if (!texto) throw new Error('La IA no devolvió contenido.');
-
-			// 4. Guardar texto en BD (inmutable desde ahora)
-			await supabase
-				.from('evaluaciones')
-				.update({ reporte_ia: texto })
-				.eq('id', evaluacionId);
-			textoReporteIA = texto;
-
-			// 5. Generar PDF
-			await exportarPDFIA(texto);
-
-		} catch (err: unknown) {
-			console.error(err);
-			errorReporte = err instanceof Error ? err.message : 'Error al generar el reporte.';
-		} finally {
-			generandoReporte = false;
-		}
-	}
-
-	async function exportarPDFIA(texto: string) {
-		const { jsPDF } = await import('jspdf');
-		const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-
-		const pageW  = doc.internal.pageSize.getWidth();
-		const pageH  = doc.internal.pageSize.getHeight();
-		const margin = 50;
-		const maxW   = pageW - margin * 2;
-		let   y      = margin;
-
-		function checkPage(needed = 20) {
-			if (y + needed > pageH - margin) { doc.addPage(); y = margin; }
-		}
-
-		function addText(txt: string, size: number, style: 'normal' | 'bold', color: [number,number,number], lineH: number) {
-			doc.setFontSize(size);
-			doc.setFont('helvetica', style);
-			doc.setTextColor(...color);
-			const lines = doc.splitTextToSize(txt, maxW) as string[];
-			for (const line of lines) {
-				checkPage(lineH);
-				doc.text(line, margin, y);
-				y += lineH;
-			}
-		}
-
-		// Portada / encabezado
-		doc.setFillColor(15, 23, 42);
-		doc.rect(0, 0, pageW, 90, 'F');
-		doc.setFontSize(18);
-		doc.setFont('helvetica', 'bold');
-		doc.setTextColor(255, 255, 255);
-		doc.text('REPORTE DE EVALUACIÓN NEUROPSICOLÓGICA', pageW / 2, 40, { align: 'center' });
-		doc.setFontSize(11);
-		doc.setFont('helvetica', 'normal');
-		doc.text('Generado con apoyo de Inteligencia Artificial · Gemini', pageW / 2, 60, { align: 'center' });
-		doc.text(new Date().toLocaleString('es-ES'), pageW / 2, 76, { align: 'center' });
-
-		y = 110;
-
-		// Parsear secciones del texto
-		const secciones = texto.split(/\n(?=\d+\.\s+[A-ZÁÉÍÓÚÑ]|NOTA ACLARATORIA|REPORTE DE)/);
-
-		for (const seccion of secciones) {
-			const lineas = seccion.trim().split('\n').filter(l => l.trim());
-			if (!lineas.length) continue;
-
-			const encabezado = lineas[0].trim();
-
-			// Detectar si es título de sección numerada
-			const esTitulo = /^\d+\.\s/.test(encabezado) || encabezado.startsWith('NOTA') || encabezado.startsWith('REPORTE');
-
-			if (esTitulo) {
-				checkPage(40);
-				y += 10;
-				// Franja de color de sección
-				doc.setFillColor(241, 245, 249);
-				doc.roundedRect(margin - 8, y - 14, maxW + 16, 22, 4, 4, 'F');
-				doc.setFontSize(12);
-				doc.setFont('helvetica', 'bold');
-				doc.setTextColor(15, 23, 42);
-				doc.text(encabezado, margin, y);
-				y += 20;
-			} else {
-				addText(encabezado, 11, 'normal', [30, 41, 59], 16);
-			}
-
-			// Párrafos del cuerpo
-			for (let i = 1; i < lineas.length; i++) {
-				const linea = lineas[i].trim();
-				if (!linea) { y += 6; continue; }
-				addText(linea, 10.5, 'normal', [51, 65, 85], 15);
-			}
-			y += 8;
-		}
-
-		// Pie de página en todas las páginas
-		const totalPags = (doc as any).internal.getNumberOfPages();
-		for (let p = 1; p <= totalPags; p++) {
-			doc.setPage(p);
-			doc.setFontSize(8);
-			doc.setFont('helvetica', 'normal');
-			doc.setTextColor(148, 163, 184);
-			doc.text(`Página ${p} de ${totalPags}  ·  Reporte generado con IA (Gemini) — solo descriptivo, no diagnóstico`, pageW / 2, pageH - 20, { align: 'center' });
-		}
-
-		// Exportar
-		if (Capacitor.isNativePlatform()) {
-			const base64 = doc.output('datauristring').split(',')[1];
-			const result = await Filesystem.writeFile({
-				path: 'reporte-ia-neuropsicologico.pdf',
-				data: base64,
-				directory: Directory.Cache
-			});
-			await Share.share({
-				title: 'Reporte IA Neuropsicológico',
-				files: [result.uri],
-				dialogTitle: 'Compartir reporte'
-			});
-		} else {
-			doc.save('Reporte_IA_Neuropsicologico.pdf');
-		}
-	}
 </script>
 
 {#if fase === 'gonogo'}
@@ -555,20 +304,6 @@ MEMORIA VISOESPACIAL:
 					</button>
 				</div>
 
-				{#if textoReporteIA}
-					<button class="btn-ia" onclick={() => exportarPDFIA(textoReporteIA!)}>
-						⬇ Descargar reporte IA
-					</button>
-				{:else}
-					<button class="btn-ia" onclick={generarReporteIA} disabled={generandoReporte}>
-						{#if generandoReporte}
-							<span class="spinner"></span> Generando reporte…
-						{:else}
-							✦ Generar reporte con IA
-						{/if}
-					</button>
-				{/if}
-
 				{#if errorReporte}
 					<p class="error-msg">{errorReporte}</p>
 				{/if}
@@ -608,18 +343,6 @@ p  { color: rgba(15,23,42,0.65); line-height: 1.6; margin-bottom: 28px; }
 
 .btn-stack { display: flex; flex-direction: column; gap: 12px; }
 
-.btn-ia {
-	padding: 16px 32px; font-size: 1rem; border-radius: 999px;
-	border: none;
-	background: linear-gradient(135deg, #6366f1, #8b5cf6);
-	color: white; cursor: pointer; width: 100%; font-weight: 700;
-	box-shadow: 0 10px 24px rgba(99,102,241,0.35);
-	transition: transform 0.15s ease, box-shadow 0.15s ease;
-	display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.btn-ia:hover:not(:disabled)  { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(99,102,241,0.45); }
-.btn-ia:active:not(:disabled) { transform: translateY(0); }
-.btn-ia:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .spinner {
 	width: 16px; height: 16px; border-radius: 50%;
